@@ -1,6 +1,21 @@
 import 'package:flutter/material.dart';
 import 'pages/profile_page.dart';
 import 'pages/edit_profile_page.dart';
+import 'pages/earnings_page.dart';
+import 'pages/portfolio_page.dart';
+// import 'pages/reviews_page.dart';
+import 'pages/login_page.dart';
+import 'pages/register_page.dart';
+import 'pages/forgot_password_page.dart';
+import 'pages/admin_login_page.dart';
+import 'pages/dashboard_admin_page.dart';
+import 'pages/announcement_admin_page.dart';
+import 'pages/verify_admin_page.dart';
+import 'pages/users_admin_page.dart';
+import 'pages/user_detail_page.dart';
+import 'pages/chat_list_admin_page.dart';
+// import 'pages/chat_room_admin_page.dart';
+import 'pages/report_admin_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,14 +27,41 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'ServicePro',
       debugShowCheckedModeBanner: false,
-      title: 'Service App',
       theme: ThemeData(
-        primarySwatch: Colors.green,
+        useMaterial3: true,
+        colorSchemeSeed: Colors.green,
+        fontFamily: 'Prompt',
       ),
-      home: const ProfilePage(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/register': (context) => const RegisterPage(),
+        '/forgot-password': (context) => const ForgotPasswordPage(),
+        '/admin-login': (context) => const AdminLoginPage(),
+        '/profile': (context) => const ProfilePage(),
+        '/edit-profile': (context) => const EditProfilePage(),
+        '/earnings': (context) => const EarningsPage(),
+        '/portfolio': (context) => const PortfolioPage(),
+        // '/reviews': (context) => const ReviewsPage(),
+        '/dashboard': (context) => const DashboardAdminPage(),
+        '/announcements': (context) => const AnnouncementPage(),
+        '/verify': (context) => const VerifyPage(),
+        '/users': (context) => const UsersPage(),
+        '/user-detail': (context) {
+          final user = ModalRoute.of(context)!.settings.arguments as UserItem;
+          return UserDetailPage(user: user);
+        },
+        '/chat-list': (context) => const ChatListPage(),
+        // '/chat-room': (context) {
+        //   final conversation =
+        //       ModalRoute.of(context)!.settings.arguments as ChatConversation;
+
+        //   return ChatRoomPage(conversation: conversation);
+        // },
+        '/reports': (context) => const ReportPage(),
+      },
     );
   }
 }
-
-

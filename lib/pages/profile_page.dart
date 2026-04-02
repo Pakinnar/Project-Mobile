@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -29,7 +28,7 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: 24),
             _buildPortfolioSection(context),
             const SizedBox(height: 24),
-            _buildReviewSection(),
+            _buildReviewSection(context),
           ],
         ),
       ),
@@ -82,18 +81,10 @@ class ProfilePage extends StatelessWidget {
           children: [
             ElevatedButton.icon(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const EditProfilePage(),
-                  ),
-                );
+                Navigator.pushNamed(context, '/edit-profile');
               },
               icon: const Icon(Icons.edit, color: Colors.white),
-              label: const Text(
-                "แก้ไขโปรไฟล์",
-                style: TextStyle(color: Colors.white),
-              ),
+              label: const Text("แก้ไขโปรไฟล์"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 padding: const EdgeInsets.symmetric(
@@ -107,8 +98,10 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.camera_alt_outlined),
+              onPressed: () {
+                Navigator.pushNamed(context, '/earnings');
+              },
+              icon: const Icon(Icons.account_balance_wallet_outlined),
               label: const Text("ดูรายได้"),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
@@ -171,7 +164,12 @@ class ProfilePage extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const Spacer(),
-            TextButton(onPressed: () {}, child: const Text("ดูผลงาน →")),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/portfolio');
+              },
+              child: const Text("ดูผลงาน →"),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -182,16 +180,39 @@ class ProfilePage extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            _buildImage('assets/work1.jpg'),
-            _buildImage('assets/work2.jpg'),
-            _buildImage('assets/work3.jpg'),
-            Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
+            _buildImage(context, 'assets/work1.jpg'),
+            _buildImage(context, 'assets/work2.jpg'),
+            _buildImage(context, 'assets/work3.jpg'),
+            GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, '/portfolio');
+              },
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.photo_library_outlined,
+                      color: Color(0xFF64748B),
+                      size: 28,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      "+12 เพิ่มเติม",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: const Text("+12 เพิ่มเติม"),
             ),
           ],
         ),
@@ -199,14 +220,19 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildImage(String path) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Image.asset(path, fit: BoxFit.cover),
+  Widget _buildImage(BuildContext context, String path) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, '/portfolio');
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.asset(path, fit: BoxFit.cover),
+      ),
     );
   }
 
-  Widget _buildReviewSection() {
+  Widget _buildReviewSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -238,7 +264,9 @@ class ProfilePage extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         TextButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.pushNamed(context, '/reviews');
+          },
           child: const Center(child: Text("ดูรีวิวทั้งหมด 120 รายการ")),
         ),
       ],
@@ -326,4 +354,3 @@ class ProfilePage extends StatelessWidget {
     );
   }
 }
-
