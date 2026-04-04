@@ -57,7 +57,6 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: const Color(0xFF00E676),
         child: const Icon(Icons.add, color: Colors.white, size: 35),
         onPressed: () async {
-
           final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddJobPage()),
@@ -70,7 +69,6 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: _buildBottomNav(),
     );
   }
-
 
   Widget _buildFilterSection() {
     return Container(
@@ -192,26 +190,64 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF00E676),
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'หน้าหลัก'),
-        BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'หมวดหมู่'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          label: 'งานของฉัน',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble_outline),
-          label: 'ข้อความ',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          label: 'โปรไฟล์',
-        ),
-      ],
+    return Container(
+      height: 70,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _navItem(Icons.home, "หน้าหลัก", false),
+          _navItem(Icons.grid_view, 'หมวดหมู่', false),
+          _navItem(Icons.assignment_outlined, 'งานของฉัน', false),
+          _navItem(Icons.chat_bubble_outline, 'ข้อความ', false),
+          _navItem(Icons.person_outline, 'โปรไฟล์', false),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem(IconData icon, String label, bool isSelected) {
+    bool isHovering = false; 
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return MouseRegion(
+          onEnter: (_) => setState(() => isHovering = true), 
+          onExit: (_) => setState(() => isHovering = false), 
+          child: InkWell(
+            onTap: () {},
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    
+                    color: (isHovering || isSelected) 
+                        ? const Color(0xFF00E676) 
+                        : Colors.grey[400],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: (isHovering || isSelected) 
+                          ? const Color(0xFF00E676) 
+                          : Colors.grey[400],
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
