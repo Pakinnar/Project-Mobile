@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _filterChip('ใกล้ฉัน', Icons.map, true),
+          _filterChip('ใกล้ฉัน', Icons.map, false),
           _filterChip('รายได้สูง', Icons.attach_money, false),
           _filterChip('ใหม่ล่าสุด', Icons.access_time, false),
         ],
@@ -86,27 +86,50 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _filterChip(String label, IconData icon, bool selected) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: selected ? const Color(0xFF00E676) : Colors.grey[100],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: selected ? Colors.white : Colors.black54),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : Colors.black54,
-              fontWeight: FontWeight.bold,
+ Widget _filterChip(String label, IconData icon, bool selected) {
+    bool isHovering = false; 
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return MouseRegion(
+          onEnter: (_) => setState(() => isHovering = true),
+          onExit: (_) => setState(() => isHovering = false),
+          child: InkWell(
+            onTap: () {
+              
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: (selected || isHovering) 
+                    ? const Color(0xFF00E676) 
+                    : Colors.grey[100],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon, 
+                    size: 18, 
+                    color: (selected || isHovering) ? Colors.white : Colors.black54
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: (selected || isHovering) ? Colors.white : Colors.black54,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
