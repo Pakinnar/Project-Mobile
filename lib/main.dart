@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart'; // Import หน้าหลักมาใช้ที่นี่
+import 'home_page.dart'; 
 
 void main() {
   runApp(const LocalJobHubApp());
@@ -15,9 +15,9 @@ class LocalJobHubApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: const Color(0xFF00E676),
-        useMaterial3: false, // ปิดเพื่อให้ UI ดูเหมือนในรูปที่คุณส่งมา
+        useMaterial3: false, 
       ),
-      home: const HomePage(), // เรียกใช้ HomePage จากไฟล์ที่แยกไป
+      home: const HomePage(),
     );
   }
 }

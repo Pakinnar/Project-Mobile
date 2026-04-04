@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'add_job_page.dart'; // ต้อง Import เพื่อให้เรียกใช้หน้า AddJobPage ได้
+import 'add_job_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -57,7 +57,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: const Color(0xFF00E676),
         child: const Icon(Icons.add, color: Colors.white, size: 35),
         onPressed: () async {
-          // เปิดหน้าลงประกาศ
+
           final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddJobPage()),
@@ -71,7 +71,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widgets ย่อยๆ ย้ายมาเป็นฟังก์ชันในคลาสเพื่อความสะอาด ---
 
   Widget _buildFilterSection() {
     return Container(
