@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'add_job_page.dart';
+import 'category_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -86,8 +87,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
- Widget _filterChip(String label, IconData icon, bool selected) {
-    bool isHovering = false; 
+  Widget _filterChip(String label, IconData icon, bool selected) {
+    bool isHovering = false;
 
     return StatefulBuilder(
       builder: (context, setState) {
@@ -95,16 +96,14 @@ class _HomePageState extends State<HomePage> {
           onEnter: (_) => setState(() => isHovering = true),
           onExit: (_) => setState(() => isHovering = false),
           child: InkWell(
-            onTap: () {
-              
-            },
+            onTap: () {},
             borderRadius: BorderRadius.circular(20),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: (selected || isHovering) 
-                    ? const Color(0xFF00E676) 
+                color: (selected || isHovering)
+                    ? const Color(0xFF00E676)
                     : Colors.grey[100],
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -112,15 +111,19 @@ class _HomePageState extends State<HomePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    icon, 
-                    size: 18, 
-                    color: (selected || isHovering) ? Colors.white : Colors.black54
+                    icon,
+                    size: 18,
+                    color: (selected || isHovering)
+                        ? Colors.white
+                        : Colors.black54,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     label,
                     style: TextStyle(
-                      color: (selected || isHovering) ? Colors.white : Colors.black54,
+                      color: (selected || isHovering)
+                          ? Colors.white
+                          : Colors.black54,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -223,7 +226,17 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _navItem(Icons.home, "หน้าหลัก", false),
-          _navItem(Icons.grid_view, 'หมวดหมู่', false),
+          _navItem(
+            Icons.grid_view,
+            'หมวดหมู่',
+            false,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CategoryPage()),
+              );
+            },
+          ),
           _navItem(Icons.assignment_outlined, 'งานของฉัน', false),
           _navItem(Icons.chat_bubble_outline, 'ข้อความ', false),
           _navItem(Icons.person_outline, 'โปรไฟล์', false),
@@ -232,45 +245,45 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _navItem(IconData icon, String label, bool isSelected) {
-    bool isHovering = false; 
+ Widget _navItem(IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
+  bool isHoveringLocal = false; 
 
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovering = true), 
-          onExit: (_) => setState(() => isHovering = false), 
-          child: InkWell(
-            onTap: () {},
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    
-                    color: (isHovering || isSelected) 
-                        ? const Color(0xFF00E676) 
+  return StatefulBuilder(
+    builder: (context, setState) {
+      return MouseRegion(
+        onEnter: (_) => setState(() => isHoveringLocal = true),
+        onExit: (_) => setState(() => isHoveringLocal = false),
+        cursor: SystemMouseCursors.click,
+        child: InkWell(
+          onTap: onTap, 
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: (isHoveringLocal || isSelected)
+                      ? const Color(0xFF00E676)
+                      : Colors.grey[400],    
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: (isHoveringLocal || isSelected)
+                        ? const Color(0xFF00E676)
                         : Colors.grey[400],
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: (isHovering || isSelected) 
-                          ? const Color(0xFF00E676) 
-                          : Colors.grey[400],
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 }
