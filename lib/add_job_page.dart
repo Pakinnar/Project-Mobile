@@ -23,6 +23,8 @@ class _AddJobPageState extends State<AddJobPage> {
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
+  DateTime? selectedDate;
+  TimeOfDay? selectedTime;
 
   Future<void> _pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(
@@ -39,6 +41,26 @@ class _AddJobPageState extends State<AddJobPage> {
   final titleController = TextEditingController();
   final priceController = TextEditingController();
   final descController = TextEditingController();
+
+  // ฟังก์ชันเลือกวันที่
+  Future<void> _pickDate() async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => selectedDate = picked);
+  }
+
+  // ฟังก์ชันเลือกเวลา
+  Future<void> _pickTime() async {
+    TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) setState(() => selectedTime = picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +188,92 @@ class _AddJobPageState extends State<AddJobPage> {
                         ],
                       ),
               ),
+            ),
+            const SizedBox(height: 20),
+
+            const Text(
+              'วันที่และเวลาที่ต้องการ',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                // ช่องวันที่
+                Expanded(
+                  child: InkWell(
+                    onTap:
+                        _pickDate, // เชื่อมกับฟังก์ชันที่มีเส้นเหลืองก่อนหน้านี้
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 15,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 20,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            selectedDate == null
+                                ? 'mm/dd/yyyy'
+                                : "${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}",
+                            style: TextStyle(
+                              color: selectedDate == null
+                                  ? Colors.grey
+                                  : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // ช่องเวลา
+                Expanded(
+                  child: InkWell(
+                    onTap:
+                        _pickTime, // เชื่อมกับฟังก์ชันที่มีเส้นเหลืองก่อนหน้านี้
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 15,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: 20,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            selectedTime == null
+                                ? '--:-- --'
+                                : selectedTime!.format(context),
+                            style: TextStyle(
+                              color: selectedTime == null
+                                  ? Colors.grey
+                                  : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
