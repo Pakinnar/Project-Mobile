@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class AddJobPage extends StatefulWidget {
   const AddJobPage({super.key});
@@ -17,6 +19,22 @@ class _AddJobPageState extends State<AddJobPage> {
     'ยานยนต์',
     'งานบ้านและสวน',
   ];
+
+  File? _image;
+  final ImagePicker _picker = ImagePicker();
+
+
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
 
   final titleController = TextEditingController();
   final priceController = TextEditingController();
@@ -116,6 +134,41 @@ class _AddJobPageState extends State<AddJobPage> {
             ),
             const SizedBox(height: 40),
 
+            const Text(
+              'รูปภาพประกอบงาน',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                width: double.infinity,
+                height: 180,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: _image != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(_image!, fit: BoxFit.cover),
+                      )
+                    : const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text(
+                            'คลิกเพื่อเลือกรูปภาพ',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -128,7 +181,6 @@ class _AddJobPageState extends State<AddJobPage> {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  // ส่งข้อมูลกลับไปหน้าหลัก
                   Navigator.pop(context, {
                     'title': titleController.text,
                     'price': '฿${priceController.text}',
