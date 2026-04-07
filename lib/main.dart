@@ -3,7 +3,7 @@ import 'pages/profile_page.dart';
 import 'pages/edit_profile_page.dart';
 import 'pages/earnings_page.dart';
 import 'pages/portfolio_page.dart';
-// import 'pages/reviews_page.dart';
+import 'pages/reviews_page.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/forgot_password_page.dart';
@@ -14,7 +14,7 @@ import 'pages/verify_admin_page.dart';
 import 'pages/users_admin_page.dart';
 import 'pages/user_detail_page.dart';
 import 'pages/chat_list_admin_page.dart';
-// import 'pages/chat_room_admin_page.dart';
+import 'pages/chat_room_admin_page.dart';
 import 'pages/report_admin_page.dart';
 
 void main() {
@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
         '/edit-profile': (context) => const EditProfilePage(),
         '/earnings': (context) => const EarningsPage(),
         '/portfolio': (context) => const PortfolioPage(),
-        // '/reviews': (context) => const ReviewsPage(),
+        '/reviews': (context) => const ReviewsPage(),
         '/dashboard': (context) => const DashboardAdminPage(),
         '/announcements': (context) => const AnnouncementPage(),
         '/verify': (context) => const VerifyPage(),
@@ -54,12 +54,12 @@ class MyApp extends StatelessWidget {
           return UserDetailPage(user: user);
         },
         '/chat-list': (context) => const ChatListPage(),
-        // '/chat-room': (context) {
-        //   final conversation =
-        //       ModalRoute.of(context)!.settings.arguments as ChatConversation;
+        '/chat-room': (context) {
+          final conversation =
+              ModalRoute.of(context)!.settings.arguments as ChatConversation;
 
-        //   return ChatRoomPage(conversation: conversation);
-        // },
+          return ChatRoomPage(conversation: conversation);
+        },
         '/reports': (context) => const ReportPage(),
       },
     );
