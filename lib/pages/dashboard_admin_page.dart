@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/dashboard_service.dart';
 import 'announcement_admin_page.dart';
 import 'verify_admin_page.dart';
 import 'users_admin_page.dart';
-import 'report_admin_page.dart';       // ← เพิ่ม import หน้า report
-import 'chat_list_admin_page.dart';   // ← เพิ่ม import หน้า chat
-
-// ─────────────────────────────────────────────
-// DATA MODELS
-// ─────────────────────────────────────────────
+import 'report_admin_page.dart';
+import 'chat_list_admin_page.dart';
+import 'logout_admin_page.dart';
 
 class _StatCardData {
   final String title;
@@ -40,10 +38,6 @@ class _ActivityItem {
   });
 }
 
-// ─────────────────────────────────────────────
-// DASHBOARD ADMIN PAGE
-// ─────────────────────────────────────────────
-
 class DashboardAdminPage extends StatefulWidget {
   const DashboardAdminPage({super.key});
 
@@ -53,83 +47,125 @@ class DashboardAdminPage extends StatefulWidget {
 
 class _DashboardAdminPageState extends State<DashboardAdminPage> {
   int _selectedIndex = 0;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   static const Color _green = Color(0xFF00C853);
 
-  final List<_StatCardData> _stats = const [
-    _StatCardData(
-      title: 'ผู้ใช้งานทั้งหมด',
-      value: '12,450',
-      subtitle: 'เพิ่มขึ้น 1,240 รายจากเดือนที่แล้ว',
-      badge: '+12%',
-      subtitleIcon: Icons.group_outlined,
-    ),
-    _StatCardData(
-      title: 'งานที่เปิดอยู่',
-      value: '856',
-      subtitle: 'งานใหม่ 42 รายการวันนี้',
-      badge: '+5%',
-      subtitleIcon: Icons.work_outline,
-    ),
-    _StatCardData(
-      title: 'รายได้รวม',
-      value: '฿450,000',
-      subtitle: 'ค่าธรรมเนียมจากธุรกรรม 2,410 รายการ',
-      badge: '+8%',
-      subtitleIcon: Icons.receipt_long_outlined,
-    ),
-  ];
+  List<_StatCardData> _stats = [];
+  List<_ActivityItem> _activities = [];
 
   final List<Map<String, dynamic>> _quickActions = const [
-    {'label': 'อนุมัติงาน',    'icon': Icons.fact_check_outlined},
-    {'label': 'ยืนยันตัวตน',   'icon': Icons.verified_user_outlined},
-    {'label': 'ส่งประกาศ',     'icon': Icons.campaign_outlined},
-    {'label': 'ดูรายงาน',      'icon': Icons.info_outline},
+    {'label': 'อนุมัติงาน', 'icon': Icons.fact_check_outlined},
+    {'label': 'ยืนยันตัวตน', 'icon': Icons.verified_user_outlined},
+    {'label': 'ส่งประกาศ', 'icon': Icons.campaign_outlined},
+    {'label': 'ดูรายงาน', 'icon': Icons.info_outline},
   ];
 
-  final List<_ActivityItem> _activities = const [
-    _ActivityItem(
-      title: 'สมชาย วิรุฬ สมัครสมาชิกใหม่',
-      subtitle: '2 นาทีที่แล้ว',
-      iconBgColor: Color(0xFFE3F2FD),
-      icon: Icons.person_add_outlined,
-    ),
-    _ActivityItem(
-      title: 'บริษัท ก้าวหน้า จำกัด ลงประกาศงานใหม่',
-      subtitle: '15 นาทีที่แล้ว',
-      iconBgColor: Color(0xFFE8F5E9),
-      icon: Icons.work_outline,
-    ),
-    _ActivityItem(
-      title: 'ไวไล รัตนา ชำระค่าบริการ ฿1,200',
-      subtitle: '45 นาทีที่แล้ว',
-      iconBgColor: Color(0xFFFFF9C4),
-      icon: Icons.account_balance_wallet_outlined,
-    ),
-    _ActivityItem(
-      title: 'มีผู้รายงานโพสต์งาน "รับสมัครงานกราฟิก"',
-      subtitle: '1 ชั่วโมงที่แล้ว',
-      iconBgColor: Color(0xFFFFEBEE),
-      icon: Icons.warning_amber_rounded,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboard();
+  }
 
-  // ─────────────────────────────────────────────
-  // BOTTOM NAV ROUTING
-  // ─────────────────────────────────────────────
+  Future<void> _loadDashboard() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final statsData = await DashboardService.getStats();
+      final activitiesData = await DashboardService.getActivities();
+
+      setState(() {
+        _stats = [
+          _StatCardData(
+            title: 'ผู้ใช้งานทั้งหมด',
+            value: statsData['users']['total'].toString(),
+            subtitle:
+                'เพิ่มขึ้น ${statsData['users']['new_this_month']} รายจากเดือนที่แล้ว',
+            badge: '+${statsData['users']['growth_percent']}%',
+            subtitleIcon: Icons.group_outlined,
+          ),
+          _StatCardData(
+            title: 'งานที่เปิดอยู่',
+            value: statsData['jobs']['open'].toString(),
+            subtitle: 'งานใหม่ ${statsData['jobs']['new_today']} รายการวันนี้',
+            badge: '+5%',
+            subtitleIcon: Icons.work_outline,
+          ),
+          _StatCardData(
+            title: 'รายได้รวม',
+            value: '฿${statsData['earnings']['total']}',
+            subtitle:
+                'ค่าธรรมเนียมจากธุรกรรม ${statsData['earnings']['transaction_count']} รายการ',
+            badge: '+8%',
+            subtitleIcon: Icons.receipt_long_outlined,
+          ),
+        ];
+
+        _activities = activitiesData.map<_ActivityItem>((item) {
+          return _ActivityItem(
+            title: item['title'] ?? '',
+            subtitle: item['subtitle'] ?? '',
+            iconBgColor: _getIconBgColor(item['icon_type'] ?? 'info'),
+            icon: _getIcon(item['icon_type'] ?? 'info'),
+          );
+        }).toList();
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  Color _getIconBgColor(String type) {
+    switch (type) {
+      case 'person':
+        return const Color(0xFFE3F2FD);
+      case 'work':
+        return const Color(0xFFE8F5E9);
+      case 'payment':
+        return const Color(0xFFFFF9C4);
+      case 'warning':
+        return const Color(0xFFFFEBEE);
+      default:
+        return const Color(0xFFF5F5F5);
+    }
+  }
+
+  IconData _getIcon(String type) {
+    switch (type) {
+      case 'person':
+        return Icons.person_add_outlined;
+      case 'work':
+        return Icons.work_outline;
+      case 'payment':
+        return Icons.account_balance_wallet_outlined;
+      case 'warning':
+        return Icons.warning_amber_rounded;
+      default:
+        return Icons.info_outline;
+    }
+  }
 
   void _onNavTap(int index) {
     if (index == _selectedIndex) return;
     switch (index) {
-      case 1: // ตรวจสอบ
+      case 1:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const VerifyPage()));
         break;
-      case 2: // ผู้ใช้
+      case 2:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const UsersPage()));
         break;
-      case 3: // แชท ← เชื่อมแล้ว
+      case 3:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const ChatListPage()));
         break;
@@ -138,34 +174,26 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // QUICK ACTION ROUTING
-  // ─────────────────────────────────────────────
-
   void _onQuickActionTap(int index) {
     switch (index) {
-      case 0: // อนุมัติงาน → VerifyPage
+      case 0:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const VerifyPage()));
         break;
-      case 1: // ยืนยันตัวตน → UsersPage
+      case 1:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const UsersPage()));
         break;
-      case 2: // ส่งประกาศ → AnnouncementPage
+      case 2:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const AnnouncementPage()));
         break;
-      case 3: // ดูรายงาน → ReportPage ← เชื่อมแล้ว
+      case 3:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const ReportPage()));
         break;
     }
   }
-
-  // ─────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -176,43 +204,55 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
           children: [
             _buildAppBar(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ..._stats.map((s) => _buildStatCard(s)),
-                    const SizedBox(height: 8),
-                    _buildSectionHeader(
-                        icon: Icons.bolt, title: 'จัดการด่วน'),
-                    const SizedBox(height: 12),
-                    _buildQuickActions(),
-                    const SizedBox(height: 20),
-                    _buildSectionHeader(
-                      icon: Icons.history,
-                      title: 'กิจกรรมล่าสุด',
-                      trailing: TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const ReportPage()),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _green),
+                    )
+                  : _errorMessage != null
+                      ? _buildError()
+                      : RefreshIndicator(
+                          color: _green,
+                          onRefresh: _loadDashboard,
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ..._stats.map((s) => _buildStatCard(s)),
+                                const SizedBox(height: 8),
+                                _buildSectionHeader(
+                                    icon: Icons.bolt, title: 'จัดการด่วน'),
+                                const SizedBox(height: 12),
+                                _buildQuickActions(),
+                                const SizedBox(height: 20),
+                                _buildSectionHeader(
+                                  icon: Icons.history,
+                                  title: 'กิจกรรมล่าสุด',
+                                  trailing: TextButton(
+                                    onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => const ReportPage()),
+                                    ),
+                                    child: const Text(
+                                      'ดูทั้งหมด',
+                                      style: TextStyle(
+                                          color: _green,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ..._activities
+                                    .map((a) => _buildActivityTile(a)),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
                         ),
-                        child: const Text(
-                          'ดูทั้งหมด',
-                          style: TextStyle(
-                              color: _green,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ..._activities.map((a) => _buildActivityTile(a)),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -221,9 +261,32 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // WIDGETS
-  // ─────────────────────────────────────────────
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
+          const SizedBox(height: 14),
+          Text(
+            _errorMessage ?? 'เกิดข้อผิดพลาด',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _loadDashboard,
+            icon: const Icon(Icons.refresh),
+            label: const Text('ลองใหม่'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildAppBar() {
     return Container(
@@ -235,8 +298,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-                color: _green,
-                borderRadius: BorderRadius.circular(8)),
+                color: _green, borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.grid_view_rounded,
                 color: Colors.white, size: 22),
           ),
@@ -249,10 +311,16 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                 color: Color(0xFF1A1A2E)),
           ),
           const Spacer(),
-          const CircleAvatar(
-            radius: 19,
-            backgroundColor: Color(0xFFE0E0E0),
-            child: Icon(Icons.person, color: Colors.grey, size: 22),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LogoutPage()),
+            ),
+            child: const CircleAvatar(
+              radius: 19,
+              backgroundColor: Color(0xFFE0E0E0),
+              child: Icon(Icons.person, color: Colors.grey, size: 22),
+            ),
           ),
         ],
       ),
@@ -260,9 +328,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
   }
 
   Widget _buildSectionHeader(
-      {required IconData icon,
-      required String title,
-      Widget? trailing}) {
+      {required IconData icon, required String title, Widget? trailing}) {
     return Row(
       children: [
         Icon(icon, color: _green, size: 22),
@@ -304,8 +370,8 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                       color: Color(0xFF757575),
                       fontWeight: FontWeight.w500)),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                     color: const Color(0xFFE8F5E9),
                     borderRadius: BorderRadius.circular(20)),
