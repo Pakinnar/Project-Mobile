@@ -50,8 +50,15 @@ class MyApp extends StatelessWidget {
         '/verify': (context) => const VerifyPage(),
         '/users': (context) => const UsersPage(),
         '/user-detail': (context) {
-          final user = ModalRoute.of(context)!.settings.arguments as UserItem;
-          return UserDetailPage(user: user);
+          final args = ModalRoute.of(context)?.settings.arguments;
+
+          if (args == null || args is! UserItem) {
+            return const Scaffold(
+              body: Center(child: Text('ไม่พบข้อมูลผู้ใช้')),
+            );
+          }
+
+          return UserDetailPage(user: args);
         },
         '/chat-list': (context) => const ChatListPage(),
         '/chat-room': (context) {
