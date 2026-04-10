@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'add_job_page.dart';
 import 'category_page.dart';
+import 'job_detail_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -48,7 +49,7 @@ class _HomePageState extends State<HomePage> {
               itemCount: jobList.length,
               itemBuilder: (context, index) {
                 final job = jobList[index];
-                return _buildJobItem(job);
+                return _buildJobItem(job, context);
               },
             ),
           ),
@@ -79,7 +80,7 @@ class _HomePageState extends State<HomePage> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _filterChip('ใกล้ฉัน', Icons.map, false),
+          _filterChip('ใกล้ฉัน', Icons.map, true),
           _filterChip('รายได้สูง', Icons.attach_money, false),
           _filterChip('ใหม่ล่าสุด', Icons.access_time, false),
         ],
@@ -136,81 +137,99 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildJobItem(Map<String, String> job) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              job['img']!,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                );
-              },
+  Widget _buildJobItem(Map<String, String> job, BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => JobDetailPage(job: job)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                job['img']!,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image, color: Colors.grey),
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      job['title']!,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        job['title']!,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    Text(
-                      job['price']!,
-                      style: const TextStyle(
-                        color: Color(0xFF00E676),
-                        fontWeight: FontWeight.bold,
+                      Text(
+                        job['price']!,
+                        style: const TextStyle(
+                          color: Color(0xFF00E676),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                Text(
-                  job['desc']!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
-                    Text(
-                      ' ${job['dist']}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(width: 10),
-                    Icon(Icons.build, size: 14, color: Colors.grey[400]),
-                    Text(
-                      ' ${job['cate']}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                  Text(
+                    job['desc']!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Colors.grey[400],
+                      ),
+                      Text(
+                        ' ${job['dist']}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Icon(Icons.build, size: 14, color: Colors.grey[400]),
+                      Text(
+                        ' ${job['cate']}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -225,7 +244,7 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _navItem(Icons.home, "หน้าหลัก", false),
+          _navItem(Icons.home, "หน้าหลัก", true),
           _navItem(
             Icons.grid_view,
             'หมวดหมู่',
@@ -245,45 +264,52 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
- Widget _navItem(IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
-  bool isHoveringLocal = false; 
+  Widget _navItem(
+    IconData icon,
+    String label,
+    bool isSelected, {
+    VoidCallback? onTap,
+  }) {
+    bool isHoveringLocal = false;
 
-  return StatefulBuilder(
-    builder: (context, setState) {
-      return MouseRegion(
-        onEnter: (_) => setState(() => isHoveringLocal = true),
-        onExit: (_) => setState(() => isHoveringLocal = false),
-        cursor: SystemMouseCursors.click,
-        child: InkWell(
-          onTap: onTap, 
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: (isHoveringLocal || isSelected)
-                      ? const Color(0xFF00E676)
-                      : Colors.grey[400],    
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return MouseRegion(
+          onEnter: (_) => setState(() => isHoveringLocal = true),
+          onExit: (_) => setState(() => isHoveringLocal = false),
+          cursor: SystemMouseCursors.click,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
                     color: (isHoveringLocal || isSelected)
                         ? const Color(0xFF00E676)
                         : Colors.grey[400],
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: (isHoveringLocal || isSelected)
+                          ? const Color(0xFF00E676)
+                          : Colors.grey[400],
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 }

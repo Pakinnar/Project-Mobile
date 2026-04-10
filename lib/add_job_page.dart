@@ -20,6 +20,17 @@ class _AddJobPageState extends State<AddJobPage> {
     'งานบ้านและสวน',
   ];
 
+  List<String> selectedSkills = [];
+  final List<String> commonSkills = [
+    'ล้างแอร์',
+    'เติมน้ำยา',
+    'เช็คระบบไฟ',
+    'ล้างรถ',
+    'ซ่อมประปา',
+    'ทำความสะอาด',
+    'ซ่อมเครื่องใช้ไฟฟ้า',
+  ];
+
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
@@ -120,6 +131,52 @@ class _AddJobPageState extends State<AddJobPage> {
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),
               onChanged: (val) => setState(() => selectedCate = val!),
+            ),
+            const SizedBox(height: 20),
+
+            const Text(
+              'ทักษะที่จำเป็น (เลือกได้มากกว่า 1)',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: commonSkills.map((skill) {
+                final isSelected = selectedSkills.contains(skill);
+                return FilterChip(
+                  label: Text(skill),
+                  selected: isSelected,
+                  onSelected: (bool value) {
+                    setState(() {
+                      if (value) {
+                        selectedSkills.add(skill);
+                      } else {
+                        selectedSkills.remove(skill);
+                      }
+                    });
+                  },
+                  selectedColor: const Color(0xFF00E676).withOpacity(0.2),
+                  checkmarkColor: const Color(0xFF00E676),
+                  labelStyle: TextStyle(
+                    color: isSelected
+                        ? const Color(0xFF00E676)
+                        : Colors.black54,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                  backgroundColor: Colors.grey[100],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: isSelected
+                          ? const Color(0xFF00E676)
+                          : Colors.transparent,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 20),
 
@@ -293,6 +350,7 @@ class _AddJobPageState extends State<AddJobPage> {
                     'title': titleController.text,
                     'price': '฿${priceController.text}',
                     'desc': descController.text,
+                    'skills': selectedSkills.join(','),
                     'dist': '0.0 กม.',
                     'cate': selectedCate,
                     'img':
