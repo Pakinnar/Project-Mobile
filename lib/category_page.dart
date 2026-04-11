@@ -14,7 +14,7 @@ class _CategoryPageState extends State<CategoryPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 0.5, // ปรับให้มีเส้นบางๆ เหมือนหน้าหลัก
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
@@ -30,10 +30,11 @@ class _CategoryPageState extends State<CategoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ส่วนค้นหา
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: Colors.grey[100], // ปรับสีให้อ่อนลงหน่อย
                 borderRadius: BorderRadius.circular(15),
               ),
               child: const TextField(
@@ -119,7 +120,6 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-
   Widget _buildCategoryItem(String title, IconData icon, Color color) {
     return Container(
       decoration: BoxDecoration(
@@ -166,9 +166,9 @@ class _CategoryPageState extends State<CategoryPage> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _navItem(Icons.home, "หน้าหลัก", false, onTap: () {
-            Navigator.pop(context);
+            Navigator.pop(context); // กลับไปหน้าหลัก
           }),
-          _navItem(Icons.grid_view, 'หมวดหมู่', true),
+          _navItem(Icons.grid_view, 'หมวดหมู่', true), // หน้านี้คือหมวดหมู่ เลยเป็น true
           _navItem(Icons.assignment_outlined, 'งานของฉัน', false),
           _navItem(Icons.chat_bubble_outline, 'ข้อความ', false),
           _navItem(Icons.person_outline, 'โปรไฟล์', false),
@@ -178,43 +178,30 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   Widget _navItem(IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
-    bool isHovering = false; 
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovering = true),
-          onExit: (_) => setState(() => isHovering = false),
-          cursor: SystemMouseCursors.click,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    color: (isHovering || isSelected)
-                        ? const Color(0xFF00E676) // สีเขียว
-                        : Colors.grey[400],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: (isHovering || isSelected)
-                          ? const Color(0xFF00E676)
-                          : Colors.grey[400],
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ],
+    // ถอด MouseRegion และ StatefulBuilder ออกเพื่อป้องกันแอปค้าง
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }

@@ -40,6 +40,9 @@ class _AddJobPageState extends State<AddJobPage> {
   Future<void> _pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 80,
     );
 
     if (pickedFile != null) {
@@ -353,8 +356,9 @@ class _AddJobPageState extends State<AddJobPage> {
                     'skills': selectedSkills.join(','),
                     'dist': '0.0 กม.',
                     'cate': selectedCate,
-                    'img':
-                        'https://images.unsplash.com/photo-1521791136064-7986c2923216?w=200',
+                    'img': _image != null
+                        ? _image!.path
+                        :'https://via.placeholder.com/150'
                   });
                 },
                 child: const Text(

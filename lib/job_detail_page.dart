@@ -2,9 +2,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 class JobDetailPage extends StatelessWidget {
-  final Map<String, String> job; 
+  final Map<String, String> job;
 
   const JobDetailPage({super.key, required this.job});
+
+  // ฟังก์ชันช่วยจัดการ ImageProvider เพื่อป้องกัน Error
+  ImageProvider _getImageProvider(String? imgPath) {
+    if (imgPath == null || imgPath.isEmpty) {
+      return const NetworkImage('https://via.placeholder.com/400');
+    }
+    if (imgPath.startsWith('http')) {
+      return NetworkImage(imgPath);
+    } else {
+      return FileImage(File(imgPath));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +54,6 @@ class JobDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeaderImage(),
-
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -67,27 +78,23 @@ class JobDetailPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 25),
-
                   _buildSectionCard(
                     icon: Icons.description_outlined,
                     title: 'รายละเอียดงาน',
                     content: job['desc'] ?? 'ไม่มีรายละเอียดงาน',
                     tags: (job['skills'] != null && job['skills']!.isNotEmpty)
-                        ? job['skills']!.split(
-                            ',',
-                          )
-                        : ['ทั่วไป'], 
+                        ? job['skills']!.split(',')
+                        : ['ทั่วไป'],
                   ),
                   const SizedBox(height: 20),
-
                   _buildLocationCard(),
+                  const SizedBox(height: 100), // เผื่อพื้นที่ให้ Bottom Bar
                 ],
               ),
             ),
           ],
         ),
       ),
-
       bottomNavigationBar: _buildBottomAction(),
     );
   }
@@ -98,9 +105,7 @@ class JobDetailPage extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: job['img']!.startsWith('http')
-              ? NetworkImage(job['img']!)
-              : FileImage(File(job['img']!)) as ImageProvider,
+          image: _getImageProvider(job['img']),
           fit: BoxFit.cover,
         ),
       ),
@@ -145,7 +150,7 @@ class JobDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              job['title']!,
+              job['title'] ?? 'ไม่ระบุชื่อหัวข้อ',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 26,
@@ -177,11 +182,12 @@ class JobDetailPage extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              textAlign: TextAlign.center,
             ),
             Text(
               label,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: const TextStyle(color: Colors.grey, fontSize: 11),
             ),
           ],
         ),
@@ -196,6 +202,7 @@ class JobDetailPage extends StatelessWidget {
     List<String>? tags,
   }) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFF8F9FB),
@@ -219,7 +226,7 @@ class JobDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 15),
           Text(content, style: TextStyle(color: Colors.grey[800], height: 1.6)),
-          if (tags != null) ...[
+          if (tags != null && tags.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text(
               'ทักษะที่จำเป็น',
@@ -241,7 +248,7 @@ class JobDetailPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        tag,
+                        tag.trim(),
                         style: const TextStyle(
                           color: Colors.blueGrey,
                           fontSize: 12,
@@ -259,6 +266,7 @@ class JobDetailPage extends StatelessWidget {
 
   Widget _buildLocationCard() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFF8F9FB),
@@ -269,7 +277,7 @@ class JobDetailPage extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.location_on_outlined, color: const Color(0xFF00E676)),
+              Icon(Icons.location_on_outlined, color: Color(0xFF00E676)),
               SizedBox(width: 10),
               Text(
                 'สถานที่',
@@ -279,7 +287,7 @@ class JobDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            '123 Creative Blvd, Design District, NY',
+            'กรุงเทพมหานคร และปริมณฑล',
             style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 15),
@@ -299,7 +307,7 @@ class JobDetailPage extends StatelessWidget {
 
   Widget _buildBottomAction() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
@@ -307,7 +315,7 @@ class JobDetailPage extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade200),
               borderRadius: BorderRadius.circular(12),
