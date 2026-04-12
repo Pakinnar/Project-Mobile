@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'add_job_page.dart';
 import 'category_page.dart';
 import 'job_detail_page.dart';
+import 'job_tracking_page.dart';
 import 'dart:io';
 
 class HomePage extends StatefulWidget {
@@ -12,7 +13,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // ข้อมูลเริ่มต้น
+  // ข้อมูลเริ่มต้น - เปลี่ยนลิงก์รูปภาพให้ใช้งานได้จริง
   final List<Map<String, String>> jobList = [
     {
       'title': 'รับจ้างล้างแอร์',
@@ -20,7 +21,7 @@ class _HomePageState extends State<HomePage> {
       'desc': 'บริการล้างเครื่องปรับอากาศแบบติดผนัง รวมเติมน้ำยา...',
       'dist': '2.5 กม.',
       'cate': 'บริการช่าง',
-      'img': 'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?w=200',
+      'img': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400', 
     },
   ];
 
@@ -49,7 +50,6 @@ class _HomePageState extends State<HomePage> {
             child: ListView.builder(
               itemCount: jobList.length,
               itemBuilder: (context, index) {
-                // ใช้การดึงข้อมูลที่ปลอดภัยขึ้น
                 final Map<String, String> job = jobList[index];
                 return _buildJobItem(job, context);
               },
@@ -65,10 +65,9 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(builder: (context) => const AddJobPage()),
           );
-          
+
           if (result != null && result is Map<String, String>) {
             setState(() {
-              // เพิ่มข้อมูลใหม่ไว้บนสุด
               jobList.insert(0, result);
             });
           }
@@ -145,16 +144,21 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --- แก้ไขจุดที่ล้น (Overflow) ---
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        job['title'] ?? 'ไม่มีชื่อหัวข้อ',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          job['title'] ?? 'ไม่มีชื่อหัวข้อ',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis, // ใส่ ... ถ้าข้อความล้นจอ
+                          maxLines: 1,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         job['price'] ?? '0',
                         style: const TextStyle(
@@ -197,32 +201,31 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildJobImage(String? imgPath) {
     if (imgPath == null || imgPath.isEmpty) {
-      return Container(
-        width: 80, 
-        height: 80, 
-        color: Colors.grey[200], 
-        child: const Icon(Icons.image, color: Colors.grey)
-      );
+      return _imageErrorPlaceholder();
     }
-
     try {
       if (imgPath.startsWith('http')) {
         return Image.network(
-          imgPath, 
-          width: 80, 
-          height: 80, 
+          imgPath,
+          width: 80,
+          height: 80,
           fit: BoxFit.cover,
-          // เพิ่มการเช็ค error ป้องกันแอปค้างเวลาเน็ตหลุด
           errorBuilder: (context, error, stackTrace) => _imageErrorPlaceholder(),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: 80, height: 80, color: Colors.grey[100],
+              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          },
         );
       } else {
-        // เช็คว่าไฟล์มีอยู่จริงไหมก่อนโหลด
         final file = File(imgPath);
         if (file.existsSync()) {
           return Image.file(
-            file, 
-            width: 80, 
-            height: 80, 
+            file,
+            width: 80,
+            height: 80,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => _imageErrorPlaceholder(),
           );
@@ -237,10 +240,10 @@ class _HomePageState extends State<HomePage> {
 
   Widget _imageErrorPlaceholder() {
     return Container(
-      width: 80, 
-      height: 80, 
-      color: Colors.grey[200], 
-      child: const Icon(Icons.broken_image, color: Colors.grey)
+      width: 80,
+      height: 80,
+      color: Colors.grey[200],
+      child: const Icon(Icons.broken_image, color: Colors.grey),
     );
   }
 
@@ -266,7 +269,19 @@ class _HomePageState extends State<HomePage> {
               );
             },
           ),
-          _navItem(Icons.assignment_outlined, 'งานของฉัน', false),
+          _navItem(
+            Icons.assignment_outlined,
+            'งานของฉัน',
+            false,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => JobTrackingPage(job: jobList[0]),
+                ),
+              );
+            },
+          ),
           _navItem(Icons.chat_bubble_outline, 'ข้อความ', false),
           _navItem(Icons.person_outline, 'โปรไฟล์', false),
         ],
