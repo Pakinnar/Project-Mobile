@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'job_tracking_page.dart'; 
 
 class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});
@@ -14,7 +15,7 @@ class _CategoryPageState extends State<CategoryPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5, // ปรับให้มีเส้นบางๆ เหมือนหน้าหลัก
+        elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
@@ -30,11 +31,10 @@ class _CategoryPageState extends State<CategoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ส่วนค้นหา
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               decoration: BoxDecoration(
-                color: Colors.grey[100], // ปรับสีให้อ่อนลงหน่อย
+                color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(15),
               ),
               child: const TextField(
@@ -166,10 +166,27 @@ class _CategoryPageState extends State<CategoryPage> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _navItem(Icons.home, "หน้าหลัก", false, onTap: () {
-            Navigator.pop(context); // กลับไปหน้าหลัก
+            Navigator.pop(context); 
           }),
-          _navItem(Icons.grid_view, 'หมวดหมู่', true), // หน้านี้คือหมวดหมู่ เลยเป็น true
-          _navItem(Icons.assignment_outlined, 'งานของฉัน', false),
+          _navItem(Icons.grid_view, 'หมวดหมู่', true, onTap: () {
+          }),
+          _navItem(Icons.assignment_outlined, 'งานของฉัน', false, onTap: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => JobTrackingPage(
+                  job: {
+                    'title': 'รับจ้างล้างแอร์',
+                    'price': '฿1,800',
+                    'desc': 'บริการล้างเครื่องปรับอากาศแบบติดผนัง รวมเติมน้ำยา...',
+                    'dist': '2.5 กม.',
+                    'cate': 'บริการช่าง',
+                    'img': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400',
+                  },
+                ),
+              ),
+            );
+          }),
           _navItem(Icons.chat_bubble_outline, 'ข้อความ', false),
           _navItem(Icons.person_outline, 'โปรไฟล์', false),
         ],
@@ -178,7 +195,6 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   Widget _navItem(IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
-    // ถอด MouseRegion และ StatefulBuilder ออกเพื่อป้องกันแอปค้าง
     return InkWell(
       onTap: onTap,
       child: Padding(

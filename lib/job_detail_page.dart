@@ -6,7 +6,6 @@ class JobDetailPage extends StatelessWidget {
 
   const JobDetailPage({super.key, required this.job});
 
-  // ฟังก์ชันช่วยจัดการ ImageProvider เพื่อป้องกัน Error
   ImageProvider _getImageProvider(String? imgPath) {
     if (imgPath == null || imgPath.isEmpty) {
       return const NetworkImage('https://via.placeholder.com/400');
@@ -88,7 +87,7 @@ class JobDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   _buildLocationCard(),
-                  const SizedBox(height: 100), // เผื่อพื้นที่ให้ Bottom Bar
+                  const SizedBox(height: 100),
                 ],
               ),
             ),

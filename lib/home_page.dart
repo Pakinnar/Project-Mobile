@@ -13,7 +13,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // ข้อมูลเริ่มต้น - เปลี่ยนลิงก์รูปภาพให้ใช้งานได้จริง
   final List<Map<String, String>> jobList = [
     {
       'title': 'รับจ้างล้างแอร์',
@@ -21,7 +20,7 @@ class _HomePageState extends State<HomePage> {
       'desc': 'บริการล้างเครื่องปรับอากาศแบบติดผนัง รวมเติมน้ำยา...',
       'dist': '2.5 กม.',
       'cate': 'บริการช่าง',
-      'img': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400', 
+      'img': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400',
     },
   ];
 
@@ -144,7 +143,6 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- แก้ไขจุดที่ล้น (Overflow) ---
                   Row(
                     children: [
                       Expanded(
@@ -154,7 +152,7 @@ class _HomePageState extends State<HomePage> {
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
-                          overflow: TextOverflow.ellipsis, // ใส่ ... ถ้าข้อความล้นจอ
+                          overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
                       ),
@@ -257,7 +255,9 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _navItem(Icons.home, "หน้าหลัก", true),
+          _navItem(Icons.home, "หน้าหลัก", true, onTap: () {
+            
+          }),
           _navItem(
             Icons.grid_view,
             'หมวดหมู่',

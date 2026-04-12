@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'category_page.dart';
 
 class JobTrackingPage extends StatelessWidget {
   final Map<String, String> job;
@@ -28,7 +29,6 @@ class JobTrackingPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            
             _buildImageHeader(job['img']),
 
             Padding(
@@ -36,7 +36,6 @@ class JobTrackingPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -51,7 +50,6 @@ class JobTrackingPage extends StatelessWidget {
                   
                   const SizedBox(height: 25),
 
-                
                   _buildIconDetail(Icons.location_on_outlined, 'สถานที่ปฏิบัติงาน', 'เขตวัฒนา, กรุงเทพมหานคร'),
                   const SizedBox(height: 15),
                   _buildIconDetail(Icons.calendar_today_outlined, 'วันที่ทำงาน', '25 พฤศจิกายน 2566 | 09:00 - 12:00 น.'),
@@ -64,7 +62,6 @@ class JobTrackingPage extends StatelessWidget {
                     style: TextStyle(color: Colors.grey[700], height: 1.5)),
 
                   const SizedBox(height: 30),
-
                  
                   _buildWorkerProfile(context),
 
@@ -80,7 +77,6 @@ class JobTrackingPage extends StatelessWidget {
                         elevation: 0,
                       ),
                       onPressed: () {
-                      
                         print("ไปหน้าดูสถานะ");
                       },
                       child: const Text('ดูสถานะ', 
@@ -89,7 +85,6 @@ class JobTrackingPage extends StatelessWidget {
                   ),
                   
                   const SizedBox(height: 15),
-
                   
                   SizedBox(
                     width: double.infinity,
@@ -110,9 +105,61 @@ class JobTrackingPage extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: Container(
+        height: 70,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _navItem(context, Icons.home, "หน้าหลัก", false, onTap: () {
+              Navigator.pop(context);
+            }),
+            _navItem(context, Icons.grid_view, 'หมวดหมู่', false, onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const CategoryPage()),
+              );
+            }),
+            _navItem(context, Icons.assignment_outlined, 'งานของฉัน', true, onTap: () {
+            }),
+            _navItem(context, Icons.chat_bubble_outline, 'ข้อความ', false),
+            _navItem(context, Icons.person_outline, 'โปรไฟล์', false),
+          ],
+        ),
+      ),
     );
   }
 
+
+  Widget _navItem(BuildContext context, IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildImageHeader(String? imgPath) {
     return SizedBox(

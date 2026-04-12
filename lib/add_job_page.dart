@@ -56,7 +56,6 @@ class _AddJobPageState extends State<AddJobPage> {
   final priceController = TextEditingController();
   final descController = TextEditingController();
 
-  // ฟังก์ชันเลือกวันที่
   Future<void> _pickDate() async {
     DateTime? picked = await showDatePicker(
       context: context,
@@ -67,7 +66,7 @@ class _AddJobPageState extends State<AddJobPage> {
     if (picked != null) setState(() => selectedDate = picked);
   }
 
-  // ฟังก์ชันเลือกเวลา
+
   Future<void> _pickTime() async {
     TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -258,11 +257,11 @@ class _AddJobPageState extends State<AddJobPage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                // ช่องวันที่
+                
                 Expanded(
                   child: InkWell(
                     onTap:
-                        _pickDate, // เชื่อมกับฟังก์ชันที่มีเส้นเหลืองก่อนหน้านี้
+                        _pickDate, 
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -296,11 +295,11 @@ class _AddJobPageState extends State<AddJobPage> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                // ช่องเวลา
+                
                 Expanded(
                   child: InkWell(
                     onTap:
-                        _pickTime, // เชื่อมกับฟังก์ชันที่มีเส้นเหลืองก่อนหน้านี้
+                        _pickTime, 
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
