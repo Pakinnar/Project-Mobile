@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'paymentsuccess_page.dart'; 
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({super.key});
@@ -8,7 +9,7 @@ class PaymentPage extends StatefulWidget {
 }
 
 class _PaymentPageState extends State<PaymentPage> {
-  // ตัวแปรเก็บวิธีชำระเงินที่เลือก (0: บัตร, 1: พร้อมเพย์, 2: อี-วอลเล็ท)
+  
   int selectedMethod = 0;
 
   @override
@@ -31,7 +32,6 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Column(
           children: [
             const SizedBox(height: 10),
-            // 1. ยอดรวมทั้งหมด
             const Text('ยอดรวมทั้งหมด', style: TextStyle(color: Colors.grey, fontSize: 16)),
             const SizedBox(height: 5),
             const Text('\$ 125.00',
@@ -40,11 +40,9 @@ class _PaymentPageState extends State<PaymentPage> {
             _buildVerifiedBadge(),
 
             const SizedBox(height: 30),
-            // 2. รายละเอียดงานย่อย
             _buildJobSummaryCard(),
 
             const SizedBox(height: 30),
-            // 3. ส่วนเลือกวิธีชำระเงิน
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -60,7 +58,6 @@ class _PaymentPageState extends State<PaymentPage> {
             _buildPaymentOption(2, Icons.account_balance_wallet_outlined, 'อี-วอลเล็ท', 'PayPal, GrabPay, TrueMoney'),
 
             const SizedBox(height: 40),
-            // 4. ข้อความความปลอดภัย
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -72,13 +69,18 @@ class _PaymentPageState extends State<PaymentPage> {
             ),
             const SizedBox(height: 15),
             
-            // 5. ปุ่มดำเนินการต่อ
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
                 onPressed: () {
-                  print("ดำเนินการชำระเงินวิธีที่: $selectedMethod");
+                  
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PaymentSuccessPage(),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00E676),
@@ -94,8 +96,6 @@ class _PaymentPageState extends State<PaymentPage> {
       ),
     );
   }
-
-  // --- Widget ย่อย ---
 
   Widget _buildVerifiedBadge() {
     return Container(
