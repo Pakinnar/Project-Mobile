@@ -104,7 +104,7 @@ class JobDetailPage extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(job['title'] ?? 'ไม่มีหัวข้อ', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        const Text('คลีนเนอร์ โปร เซอร์วิส', style: TextStyle(color: Colors.grey, fontSize: 16)),
+        Text(job['cate'] ?? 'หมวดหมู่ทั่วไป', style: const TextStyle(color: Colors.grey, fontSize: 16)),
       ],
     );
   }
@@ -171,13 +171,26 @@ class JobDetailPage extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [
-              _tag('ล้างแอร์ติดผนัง'), _tag('เติมน้ำยาแอร์'), _tag('เช็คระบบไฟฟ้า'),
-            ],
+            children: _buildDynamicTags(),
           )
         ],
       ),
     );
+  }
+
+  List<Widget> _buildDynamicTags() {
+    final String title = (job['title'] ?? '').toLowerCase();
+    final String cate = (job['cate'] ?? '');
+
+    if (cate == 'งานบ้านและสวน' || title.contains('สวน') || title.contains('หญ้า')) {
+      return [_tag('ตัดหญ้า'), _tag('พรวนดิน'), _tag('จัดสวน')];
+    } else if (cate == 'งานซ่อมบำรุง' || title.contains('ไฟฟ้า') || title.contains('ไฟ')) {
+      return [_tag('ซ่อมไฟฟ้า'), _tag('เดินสายไฟ'), _tag('เช็คระบบไฟ')];
+    } else if (title.contains('แอร์')) {
+      return [_tag('ล้างแอร์ติดผนัง'), _tag('เติมน้ำยาแอร์'), _tag('เช็คระบบไฟฟ้า')];
+    } else {
+      return [_tag('บริการทั่วไป'), _tag('ตรวจสอบหน้างาน')];
+    }
   }
 
   Widget _tag(String text) {
@@ -200,7 +213,7 @@ class JobDetailPage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        const Text('123 Creative Blvd, Design District, NY', style: TextStyle(color: Colors.grey)),
+        Text(job['location'] ?? 'เขตวัฒนา, กรุงเทพมหานคร', style: const TextStyle(color: Colors.grey)),
         const SizedBox(height: 15),
         ClipRRect(
           borderRadius: BorderRadius.circular(20),
