@@ -20,7 +20,7 @@ class HomePageState extends State<HomePage> {
       'title': 'รับจ้างล้างแอร์ 3 เครื่อง', 
       'price': '฿1,800',                
       'desc': 'ต้องการช่างล้างแอร์แบบติดผนัง จำนวน 3 เครื่อง รวมเติมน้ำยาแอร์และเช็คระบบเบื้องต้น ช่างต้องนำอุปกรณ์มาเองทั้งหมดครับ',
-      'img': '',
+      'img': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=500',
       'cate': 'บริการช่าง',
       'dist': '1.2 กม.',
       'location': 'เขตวัฒนา, กรุงเทพมหานคร',
@@ -30,7 +30,7 @@ class HomePageState extends State<HomePage> {
       'title': 'หาคนช่วยจัดสวนหน้าบ้าน',
       'price': '฿850',
       'desc': 'ต้องการคนช่วยตัดหญ้าและพรวนดิน พื้นที่ประมาณ 15 ตร.ว. อุปกรณ์มีให้พร้อมครับ งานด่วนครับผม',
-      'img': '',
+      'img': 'https://images.unsplash.com/photo-1558905611-1430919a7990?q=80&w=500',
       'cate': 'งานบ้านและสวน',
       'dist': '2.8 กม.',
     },
@@ -38,7 +38,7 @@ class HomePageState extends State<HomePage> {
       'title': 'ช่างซ่อมไฟฟ้าด่วน',
       'price': '฿600',
       'desc': 'ไฟดับบางจุดในบ้าน ต้องการช่างมาตรวจสอบและแก้ไขเดินสายไฟใหม่เฉพาะจุดครับ ติดต่อได้ตลอด 24 ชม.',
-      'img': '',
+      'img': 'https://images.unsplash.com/photo-1621905252507-b354bcadc0d6?q=80&w=500',
       'cate': 'งานซ่อมบำรุง',
       'dist': '0.5 กม.',
     },
@@ -145,8 +145,14 @@ class HomePageState extends State<HomePage> {
           children: [
             Container(
               width: 80, height: 80,
-              decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.image, color: Colors.grey),
+              decoration: BoxDecoration(
+                color: Colors.grey[200], 
+                borderRadius: BorderRadius.circular(12)
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _buildImageWidget(job['img']),
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -173,6 +179,31 @@ class HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildImageWidget(String? imgPath) {
+    if (imgPath == null || imgPath.isEmpty) {
+      return const Icon(Icons.image, color: Colors.grey, size: 30);
+    }
+    
+    if (imgPath.startsWith('http')) {
+      return Image.network(
+        imgPath, 
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, color: Colors.grey),
+      );
+    }
+    
+    final file = File(imgPath);
+    if (file.existsSync()) {
+      return Image.file(
+        file, 
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, color: Colors.grey),
+      );
+    }
+
+    return const Icon(Icons.image, color: Colors.grey);
+  }
+
   Widget _buildBottomNav(BuildContext context) {
     return Container(
       height: 80,
@@ -189,9 +220,7 @@ class HomePageState extends State<HomePage> {
             Navigator.push(
               context, 
               MaterialPageRoute(
-                builder: (context) => JobDetailHiringPage(
-                  job: jobList[0], 
-                ),
+                builder: (context) => const MyJobsPage(),
               ),
             );
           }),
