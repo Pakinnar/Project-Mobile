@@ -1,345 +1,271 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'home_page.dart'; 
+import 'myjobs_page.dart';
 
 class JobDetailPage extends StatelessWidget {
   final Map<String, String> job;
 
   const JobDetailPage({super.key, required this.job});
 
-  ImageProvider _getImageProvider(String? imgPath) {
-    if (imgPath == null || imgPath.isEmpty) {
-      return const NetworkImage('https://via.placeholder.com/400');
-    }
-    if (imgPath.startsWith('http')) {
-      return NetworkImage(imgPath);
-    } else {
-      return FileImage(File(imgPath));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 10),
-          child: CircleAvatar(
-            backgroundColor: Colors.white.withOpacity(0.9),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeaderImage(),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMainInfo(),
+                      const SizedBox(height: 20),
+                      _buildQuickStats(),
+                      const SizedBox(height: 25),
+                      _buildJobDescription(),
+                      const SizedBox(height: 25),
+                      _buildLocationSection(),
+                      const SizedBox(height: 100), 
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              backgroundColor: Colors.white.withOpacity(0.9),
-              child: IconButton(
-                icon: const Icon(Icons.bookmark_border, color: Colors.black),
-                onPressed: () {},
-              ),
+          Positioned(
+            top: 40,
+            left: 20,
+            right: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _circleButton(Icons.arrow_back, () => Navigator.pop(context)),
+                _circleButton(Icons.bookmark_border, () {}),
+              ],
             ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _buildBottomAction(context),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderImage(),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      _buildInfoCard(
-                        Icons.payments_outlined,
-                        '${job['price']}',
-                        'อัตราจ้าง',
-                      ),
-                      _buildInfoCard(
-                        Icons.business_center_outlined,
-                        'งานรายวัน',
-                        'ประเภทงาน',
-                      ),
-                      _buildInfoCard(
-                        Icons.calendar_today_outlined,
-                        'ตามนัดหมาย',
-                        'ความถี่',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-                  _buildSectionCard(
-                    icon: Icons.description_outlined,
-                    title: 'รายละเอียดงาน',
-                    content: job['desc'] ?? 'ไม่มีรายละเอียดงาน',
-                    tags: (job['skills'] != null && job['skills']!.isNotEmpty)
-                        ? job['skills']!.split(',')
-                        : ['ทั่วไป'],
-                  ),
-                  const SizedBox(height: 20),
-                  _buildLocationCard(),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomAction(),
     );
   }
 
   Widget _buildHeaderImage() {
     return Container(
-      height: 350,
+      height: 300,
       width: double.infinity,
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: _getImageProvider(job['img']),
-          fit: BoxFit.cover,
-        ),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withOpacity(0.2),
-              Colors.transparent,
-              Colors.black.withOpacity(0.7),
-            ],
-          ),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00E676),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white, size: 14),
-                  SizedBox(width: 5),
-                  Text(
-                    'ยืนยันแล้ว',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              job['title'] ?? 'ไม่ระบุชื่อหัวข้อ',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+        child: _buildImageWidget(job['img']),
       ),
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String value, String label) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
-          ],
-        ),
-        child: Column(
+  Widget _buildImageWidget(String? imgPath) {
+    if (imgPath == null || imgPath.isEmpty) return _imagePlaceholder();
+    if (imgPath.startsWith('http')) {
+      return Image.network(imgPath, fit: BoxFit.cover, errorBuilder: (c, e, s) => _imagePlaceholder());
+    }
+    final file = File(imgPath);
+    if (file.existsSync()) {
+      return Image.file(file, fit: BoxFit.cover, errorBuilder: (c, e, s) => _imagePlaceholder());
+    }
+    return _imagePlaceholder();
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(color: Colors.grey[200], child: const Icon(Icons.image, size: 50, color: Colors.grey));
+  }
+
+  Widget _buildMainInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Icon(icon, color: const Color(0xFF00E676)),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.grey, fontSize: 11),
-            ),
+            _badge('ยืนยันแล้ว', const Color(0xFF00E676)),
+            const SizedBox(width: 8),
+            _badge('2 วันที่แล้ว', Colors.grey.shade400),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        Text(job['title'] ?? 'ไม่มีหัวข้อ', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        const Text('คลีนเนอร์ โปร เซอร์วิส', style: TextStyle(color: Colors.grey, fontSize: 16)),
+      ],
     );
   }
 
-  Widget _buildSectionCard({
-    required IconData icon,
-    required String title,
-    required String content,
-    List<String>? tags,
-  }) {
+  Widget _badge(String text, Color color) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+      child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildQuickStats() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _statItem(Icons.payments_outlined, job['price'] ?? '฿0', 'อัตราจ้าง'),
+        _statItem(Icons.business_center_outlined, 'งานรายวัน', 'ประเภทงาน'),
+        _statItem(Icons.calendar_month_outlined, 'ตามนัดหมาย', 'ความถี่'),
+      ],
+    );
+  }
+
+  Widget _statItem(IconData icon, String val, String sub) {
+    return Container(
+      width: 105,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade100),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: const Color(0xFF00E676)),
-              const SizedBox(width: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Text(content, style: TextStyle(color: Colors.grey[800], height: 1.6)),
-          if (tags != null && tags.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const Text(
-              'ทักษะที่จำเป็น',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: tags
-                  .map(
-                    (tag) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        tag.trim(),
-                        style: const TextStyle(
-                          color: Colors.blueGrey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
+          Icon(icon, color: const Color(0xFF00E676), size: 20),
+          const SizedBox(height: 8),
+          Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.center),
+          Text(sub, style: const TextStyle(color: Colors.grey, fontSize: 10)),
         ],
       ),
     );
   }
 
-  Widget _buildLocationCard() {
+  Widget _buildJobDescription() {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.location_on_outlined, color: Color(0xFF00E676)),
+              Icon(Icons.description_outlined, color: Color(0xFF00E676), size: 20),
               SizedBox(width: 10),
-              Text(
-                'สถานที่',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              Text('รายละเอียดงาน', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'กรุงเทพมหานคร และปริมณฑล',
-            style: TextStyle(color: Colors.grey),
-          ),
           const SizedBox(height: 15),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600',
-              height: 150,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+          Text(
+            job['desc'] ?? 'ไม่มีรายละเอียดงานเพิ่มเติม',
+            style: TextStyle(color: Colors.grey.shade700, height: 1.6),
           ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _tag('ล้างแอร์ติดผนัง'), _tag('เติมน้ำยาแอร์'), _tag('เช็คระบบไฟฟ้า'),
+            ],
+          )
         ],
       ),
     );
   }
 
-  Widget _buildBottomAction() {
+  Widget _tag(String text) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(10)),
+      child: Text(text, style: const TextStyle(color: Colors.blue, fontSize: 12)),
+    );
+  }
+
+  Widget _buildLocationSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.location_on, color: Color(0xFF00E676), size: 20),
+            SizedBox(width: 10),
+            Text('สถานที่', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Text('123 Creative Blvd, Design District, NY', style: TextStyle(color: Colors.grey)),
+        const SizedBox(height: 15),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Image.network(
+            'https://media.wired.com/photos/59269cd37034dc5f91bec0f1/master/pass/GoogleMapsTA.jpg',
+            height: 150, width: double.infinity, fit: BoxFit.cover,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _circleButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        child: Icon(icon, color: Colors.black, size: 22),
+      ),
+    );
+  }
+
+  Widget _buildBottomAction(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 15, 20, 30),
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade200),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
-          ),
+          _circleButton(Icons.chat_bubble_outline, () {}),
           const SizedBox(width: 15),
           Expanded(
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00E676),
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 55,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E676),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  elevation: 0,
                 ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'สมัครงานนี้',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                onPressed: () {
+                  bool isAlreadyAccepted = HomePageState.acceptedJobList.any(
+                    (item) => item['title'] == job['title'] && item['price'] == job['price']
+                  );
+                  
+                  if (!isAlreadyAccepted) {
+                    HomePageState.acceptedJobList.insert(0, job);
+                  }
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MyJobsPage()),
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('สมัครงาน "${job['title']}" สำเร็จ!'),
+                      backgroundColor: const Color(0xFF00E676),
+                    ),
+                  );
+                },
+                child: const Text('สมัครงานนี้', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
           ),

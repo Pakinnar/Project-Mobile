@@ -1,28 +1,50 @@
 import 'package:flutter/material.dart';
-import 'add_job_page.dart';
-import 'category_page.dart';
-import 'job_detail_page.dart';
-import 'job_tracking_page.dart';
-import 'dart:io';
+import 'addjob_page.dart'; 
+import 'myjobs_page.dart'; 
+import 'job_detail_page.dart'; 
+import 'category_page.dart'; 
+import 'job_detail_hiring_page.dart'; 
+import 'dart:io'; 
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState(); 
 }
 
-class _HomePageState extends State<HomePage> {
-  final List<Map<String, String>> jobList = [
+class HomePageState extends State<HomePage> {
+  
+  static List<Map<String, String>> jobList = [
     {
-      'title': 'รับจ้างล้างแอร์',
-      'price': '฿1,800',
-      'desc': 'บริการล้างเครื่องปรับอากาศแบบติดผนัง รวมเติมน้ำยา...',
-      'dist': '2.5 กม.',
+      'title': 'รับจ้างล้างแอร์ 3 เครื่อง', 
+      'price': '฿1,800',                
+      'desc': 'ต้องการช่างล้างแอร์แบบติดผนัง จำนวน 3 เครื่อง รวมเติมน้ำยาแอร์และเช็คระบบเบื้องต้น ช่างต้องนำอุปกรณ์มาเองทั้งหมดครับ',
+      'img': '',
       'cate': 'บริการช่าง',
-      'img': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400',
+      'dist': '1.2 กม.',
+      'location': 'เขตวัฒนา, กรุงเทพมหานคร',
+      'date': '25 พฤศจิกายน 2566 | 09:00 - 12:00 น.',
+    },
+    {
+      'title': 'หาคนช่วยจัดสวนหน้าบ้าน',
+      'price': '฿850',
+      'desc': 'ต้องการคนช่วยตัดหญ้าและพรวนดิน พื้นที่ประมาณ 15 ตร.ว. อุปกรณ์มีให้พร้อมครับ งานด่วนครับผม',
+      'img': '',
+      'cate': 'งานบ้านและสวน',
+      'dist': '2.8 กม.',
+    },
+    {
+      'title': 'ช่างซ่อมไฟฟ้าด่วน',
+      'price': '฿600',
+      'desc': 'ไฟดับบางจุดในบ้าน ต้องการช่างมาตรวจสอบและแก้ไขเดินสายไฟใหม่เฉพาะจุดครับ ติดต่อได้ตลอด 24 ชม.',
+      'img': '',
+      'cate': 'งานซ่อมบำรุง',
+      'dist': '0.5 กม.',
     },
   ];
+
+  static List<Map<String, String>> acceptedJobList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +68,15 @@ class _HomePageState extends State<HomePage> {
         children: [
           _buildFilterSection(),
           Expanded(
-            child: ListView.builder(
-              itemCount: jobList.length,
-              itemBuilder: (context, index) {
-                final Map<String, String> job = jobList[index];
-                return _buildJobItem(job, context);
-              },
-            ),
+            child: jobList.isEmpty 
+              ? _buildEmptyState() 
+              : ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 80), 
+                  itemCount: jobList.length,
+                  itemBuilder: (context, index) {
+                    return _buildJobItem(jobList[index]);
+                  },
+                ),
           ),
         ],
       ),
@@ -60,67 +84,50 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: const Color(0xFF00E676),
         child: const Icon(Icons.add, color: Colors.white, size: 35),
         onPressed: () async {
-          final result = await Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddJobPage()),
           );
-
-          if (result != null && result is Map<String, String>) {
-            setState(() {
-              jobList.insert(0, result);
-            });
-          }
+          setState(() {}); 
         },
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(context),
     );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(child: Text('ยังไม่มีงานที่ลงประกาศ'));
   }
 
   Widget _buildFilterSection() {
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      height: 50,
+      margin: const EdgeInsets.symmetric(vertical: 10),
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _filterChip('ใกล้ฉัน', Icons.map, true),
-          _filterChip('รายได้สูง', Icons.attach_money, false),
-          _filterChip('ใหม่ล่าสุด', Icons.access_time, false),
+          _filterChip('ใกล้ฉัน', true),
+          _filterChip('งานด่วน', false),
+          _filterChip('ยอดนิยม', false),
         ],
       ),
     );
   }
 
-  Widget _filterChip(String label, IconData icon, bool selected) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        selected: selected,
+  Widget _filterChip(String label, bool selected) {
+    return Container(
+      margin: const EdgeInsets.only(right: 10),
+      child: Chip(
         label: Text(label),
-        avatar: Icon(
-          icon,
-          size: 18,
-          color: selected ? Colors.white : Colors.black54,
-        ),
-        onSelected: (bool value) {},
-        selectedColor: const Color(0xFF00E676),
-        checkmarkColor: Colors.white,
-        backgroundColor: Colors.grey[100],
-        labelStyle: TextStyle(
-          color: selected ? Colors.white : Colors.black54,
-          fontWeight: FontWeight.bold,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Colors.transparent),
-        ),
+        backgroundColor: selected ? const Color(0xFF00E676) : Colors.grey[100],
+        labelStyle: TextStyle(color: selected ? Colors.white : Colors.black),
       ),
     );
   }
 
-  Widget _buildJobItem(Map<String, String> job, BuildContext context) {
-    return InkWell(
+  Widget _buildJobItem(Map<String, String> job) {
+    return GestureDetector( 
       onTap: () {
         Navigator.push(
           context,
@@ -130,13 +137,16 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
+          color: Colors.white,
           border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _buildJobImage(job['img']),
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.image, color: Colors.grey),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -144,50 +154,16 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          job['title'] ?? 'ไม่มีชื่อหัวข้อ',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
+                        child: Text(job['title'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        job['price'] ?? '0',
-                        style: const TextStyle(
-                          color: Color(0xFF00E676),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text(job['price'] ?? '', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold)),
                     ],
                   ),
-                  Text(
-                    job['desc'] ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
-                      Text(
-                        ' ${job['dist'] ?? '0.0 กม.'}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      const SizedBox(width: 10),
-                      Icon(Icons.build, size: 14, color: Colors.grey[400]),
-                      Text(
-                        ' ${job['cate'] ?? 'ทั่วไป'}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 4),
+                  Text(job['desc'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 13)),
                 ],
               ),
             ),
@@ -197,119 +173,47 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildJobImage(String? imgPath) {
-    if (imgPath == null || imgPath.isEmpty) {
-      return _imageErrorPlaceholder();
-    }
-    try {
-      if (imgPath.startsWith('http')) {
-        return Image.network(
-          imgPath,
-          width: 80,
-          height: 80,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _imageErrorPlaceholder(),
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              width: 80, height: 80, color: Colors.grey[100],
-              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            );
-          },
-        );
-      } else {
-        final file = File(imgPath);
-        if (file.existsSync()) {
-          return Image.file(
-            file,
-            width: 80,
-            height: 80,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => _imageErrorPlaceholder(),
-          );
-        } else {
-          return _imageErrorPlaceholder();
-        }
-      }
-    } catch (e) {
-      return _imageErrorPlaceholder();
-    }
-  }
-
-  Widget _imageErrorPlaceholder() {
+  Widget _buildBottomNav(BuildContext context) {
     return Container(
-      width: 80,
       height: 80,
-      color: Colors.grey[200],
-      child: const Icon(Icons.broken_image, color: Colors.grey),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      height: 70,
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _navItem(Icons.home, "หน้าหลัก", true, onTap: () {
-            
-          }),
-          _navItem(
-            Icons.grid_view,
-            'หมวดหมู่',
-            false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CategoryPage()),
-              );
-            },
-          ),
-          _navItem(
-            Icons.assignment_outlined,
-            'งานของฉัน',
-            false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => JobTrackingPage(job: jobList[0]),
+          _navItem(context, Icons.home_filled, 'หน้าหลัก', true, onTap: () {}),
+          _navItem(context, Icons.grid_view_outlined, 'หมวดหมู่', false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryPage()))),
+          _navItem(context, Icons.assignment_outlined, 'งานของฉัน', false, onTap: () {
+            Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => JobDetailHiringPage(
+                  job: jobList[0], 
                 ),
-              );
-            },
-          ),
-          _navItem(Icons.chat_bubble_outline, 'ข้อความ', false),
-          _navItem(Icons.person_outline, 'โปรไฟล์', false),
+              ),
+            );
+          }),
+          _navItem(context, Icons.chat_bubble_outline, 'ข้อความ', false, onTap: () {}),
+          _navItem(context, Icons.person_outline, 'โปรไฟล์', false, onTap: () {}),
         ],
       ),
     );
   }
 
-  Widget _navItem(IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
+  Widget _navItem(BuildContext context, IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
+    final Color color = isSelected ? const Color(0xFF00E676) : const Color(0xFF94A3B8);
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: SizedBox(
+        width: 65,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
-            ),
+            Icon(icon, color: color, size: 26),
             const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
+            Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
           ],
         ),
       ),

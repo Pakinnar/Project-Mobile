@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
-import 'job_tracking_page.dart'; 
+import 'home_page.dart';
+import 'myjobs_page.dart';
 
-class CategoryPage extends StatefulWidget {
+class CategoryPage extends StatelessWidget {
   const CategoryPage({super.key});
 
-  @override
-  State<CategoryPage> createState() => _CategoryPageState();
-}
-
-class _CategoryPageState extends State<CategoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
@@ -27,47 +23,26 @@ class _CategoryPageState extends State<CategoryPage> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'ค้นหาบริการ',
-                  prefixIcon: Icon(Icons.search, color: Colors.grey),
-                ),
-              ),
-            ),
+            const SizedBox(height: 10),
+            _buildSearchBar(),
             const SizedBox(height: 25),
-
-            const Text(
-              'ยอดนิยม',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
-            ),
+            const Text('ยอดนิยม', 
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
             const SizedBox(height: 15),
-            SizedBox(
-              height: 120,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildPopularCard('ทำความสะอาด', 'https://images.unsplash.com/photo-1581578731522-745d05cb9721?w=400'),
-                  _buildPopularCard('ช่างเทคนิค', 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400'),
-                ],
-              ),
+            Row(
+              children: [
+                _buildPopularCard('ทำความสะอาด', 'https://picsum.photos/id/1/200/200'),
+                const SizedBox(width: 15),
+                _buildPopularCard('ช่างเทคนิค', 'https://picsum.photos/id/2/200/200'),
+              ],
             ),
-            const SizedBox(height: 25),
-
-            const Text(
-              'หมวดหมู่ทั้งหมด',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
-            ),
+            const SizedBox(height: 30),
+            const Text('หมวดหมู่ทั้งหมด', 
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
             const SizedBox(height: 15),
             GridView.count(
               shrinkWrap: true,
@@ -77,12 +52,13 @@ class _CategoryPageState extends State<CategoryPage> {
               crossAxisSpacing: 15,
               childAspectRatio: 1.1,
               children: [
-                _buildCategoryItem('ช่างเทคนิค', Icons.build_outlined, Colors.green),
-                _buildCategoryItem('ทำความสะอาด', Icons.clean_hands_outlined, Colors.purple),
-                _buildCategoryItem('งานฝีมือ', Icons.content_cut, Colors.orange),
-                _buildCategoryItem('การจัดส่ง', Icons.local_shipping_outlined, Colors.blue),
+                _buildCategoryCard('ช่างเทคนิค', Icons.build_outlined, const Color(0xFFE8F5E9), Colors.green),
+                _buildCategoryCard('ทำความสะอาด', Icons.clean_hands_outlined, const Color(0xFFF3E5F5), Colors.purple),
+                _buildCategoryCard('งานฝีมือ', Icons.content_cut_outlined, const Color(0xFFFFF3E0), Colors.orange),
+                _buildCategoryCard('การจัดส่ง', Icons.local_shipping_outlined, const Color(0xFFE3F2FD), Colors.blue),
               ],
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -90,65 +66,65 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  Widget _buildPopularCard(String title, String imageUrl) {
+  Widget _buildSearchBar() {
     return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 15),
       decoration: BoxDecoration(
+        color: const Color(0xFFE2E8F0).withOpacity(0.5),
         borderRadius: BorderRadius.circular(15),
-        image: DecorationImage(
-          image: NetworkImage(imageUrl),
-          fit: BoxFit.cover,
-        ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
-          ),
-        ),
-        padding: const EdgeInsets.all(12),
-        alignment: Alignment.bottomLeft,
-        child: Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      child: const TextField(
+        decoration: InputDecoration(
+          icon: Icon(Icons.search, color: Colors.grey),
+          hintText: 'ค้นหาบริการ',
+          hintStyle: TextStyle(color: Colors.grey),
+          border: InputBorder.none,
         ),
       ),
     );
   }
 
-  Widget _buildCategoryItem(String title, IconData icon, Color color) {
+  Widget _buildPopularCard(String title, String imageUrl) {
+    return Expanded(
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          image: DecorationImage(
+            image: NetworkImage(imageUrl),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken),
+          ),
+        ),
+        alignment: Alignment.bottomLeft,
+        padding: const EdgeInsets.all(15),
+        child: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryCard(String title, IconData icon, Color bgColor, Color iconColor) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 28),
+            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+            child: Icon(icon, color: iconColor, size: 28),
           ),
           const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF334155)),
           ),
         ],
       ),
@@ -157,63 +133,55 @@ class _CategoryPageState extends State<CategoryPage> {
 
   Widget _buildBottomNav(BuildContext context) {
     return Container(
-      height: 70,
+      height: 85,
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _navItem(Icons.home, "หน้าหลัก", false, onTap: () {
-            Navigator.pop(context); 
-          }),
-          _navItem(Icons.grid_view, 'หมวดหมู่', true, onTap: () {
-          }),
-          _navItem(Icons.assignment_outlined, 'งานของฉัน', false, onTap: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => JobTrackingPage(
-                  job: {
-                    'title': 'รับจ้างล้างแอร์',
-                    'price': '฿1,800',
-                    'desc': 'บริการล้างเครื่องปรับอากาศแบบติดผนัง รวมเติมน้ำยา...',
-                    'dist': '2.5 กม.',
-                    'cate': 'บริการช่าง',
-                    'img': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400',
-                  },
-                ),
-              ),
+          _navItem(context, Icons.home_outlined, 'หน้าแรก', false, onTap: () {
+            Navigator.pushAndRemoveUntil(
+              context, 
+              MaterialPageRoute(builder: (context) => const HomePage()), 
+              (route) => false
             );
           }),
-          _navItem(Icons.chat_bubble_outline, 'ข้อความ', false),
-          _navItem(Icons.person_outline, 'โปรไฟล์', false),
+          _navItem(context, Icons.grid_view_rounded, 'หมวดหมู่', true, onTap: () {}),
+          _navItem(context, Icons.assignment_outlined, 'งานของฉัน', false, onTap: () {
+            Navigator.pushReplacement(
+              context, 
+              MaterialPageRoute(builder: (context) => const MyJobsPage())
+            );
+          }),
+          _navItem(context, Icons.chat_bubble_outline, 'ข้อความ', false, onTap: () {}),
+          _navItem(context, Icons.person_outline, 'โปรไฟล์', false, onTap: () {}),
         ],
       ),
     );
   }
 
-  Widget _navItem(IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
+  Widget _navItem(BuildContext context, IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
+    final Color color = isSelected ? const Color(0xFF00E676) : const Color(0xFF94A3B8);
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      highlightColor: Colors.transparent,
+      splashColor: Colors.transparent,
+      child: SizedBox(
+        width: 65,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
-            ),
+            Icon(icon, color: color, size: 26),
             const SizedBox(height: 4),
             Text(
-              label,
+              label, 
               style: TextStyle(
-                fontSize: 12,
-                color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
+                fontSize: 10, 
+                color: color, 
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500
+              )
             ),
           ],
         ),
