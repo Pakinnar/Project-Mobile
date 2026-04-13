@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'user_detail_page.dart';
 import '../services/user_service.dart';
-
+import 'dashboard_admin_page.dart';
+import 'verify_admin_page.dart';
+import 'chat_list_admin_page.dart';
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
 
@@ -787,38 +789,59 @@ class _UsersPageState extends State<UsersPage> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      currentIndex: 2,
-      onTap: (_) {},
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: _green,
-      unselectedItemColor: const Color(0xFF9E9E9E),
-      backgroundColor: Colors.white,
-      elevation: 8,
-      selectedLabelStyle: const TextStyle(
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
+Widget _buildBottomNav() {
+  return BottomNavigationBar(
+    currentIndex: 2,
+    onTap: (index) {
+      if (index == 0) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardAdminPage()),
+        );
+      } else if (index == 1) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const VerifyPage()),
+        );
+      } else if (index == 2) {
+        return;
+      } else if (index == 3) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ChatListPage()),
+        );
+      }
+    },
+    type: BottomNavigationBarType.fixed,
+    selectedItemColor: _green,
+    unselectedItemColor: const Color(0xFF9E9E9E),
+    backgroundColor: Colors.white,
+    elevation: 8,
+    selectedLabelStyle: const TextStyle(
+      fontWeight: FontWeight.w600,
+      fontSize: 12,
+    ),
+    unselectedLabelStyle: const TextStyle(fontSize: 12),
+    items: const [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.grid_view_rounded),
+        label: 'แดชบอร์ด',
       ),
-      unselectedLabelStyle: const TextStyle(fontSize: 12),
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.grid_view_rounded),
-          label: 'แดชบอร์ด',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shield_outlined),
-          label: 'ตรวจสอบ',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.group_outlined),
-          label: 'ผู้ใช้',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble_outline),
-          label: 'แชท',
-        ),
-      ],
-    );
-  }
+      BottomNavigationBarItem(
+        icon: Icon(Icons.shield_outlined),
+        label: 'ตรวจสอบ',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.group_outlined),
+        label: 'ผู้ใช้',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.chat_bubble_outline),
+        label: 'แชท',
+      ),
+    ],
+  );
+}
+
+
 }

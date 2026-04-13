@@ -28,3 +28,13 @@ app.use('/api/announcements', announcementRoutes);
 
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
+
+
+const verifyRoutes = require('./routes/verify');
+app.use('/api/verify', verifyRoutes);
+
+
+const chatRoutes = require('./routes/chat');
+app.use('/api/chat', chatRoutes);
+
+

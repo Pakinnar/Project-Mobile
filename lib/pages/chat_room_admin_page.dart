@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'chat_list_admin_page.dart';
-
-// ─────────────────────────────────────────────
-// CHAT ROOM PAGE
-// ─────────────────────────────────────────────
+import '../services/chat_service.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final ChatConversation conversation;
@@ -22,13 +19,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  late List<ChatMessage> _messages;
+  List<ChatMessage> _messages = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _messages = List.from(widget.conversation.messages);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    _loadMessages();
   }
 
   @override
@@ -37,6 +35,41 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final data = await ChatService.getMessages(widget.conversation.id);
+
+      final msgs = (data['messages'] as List).map<ChatMessage>((json) {
+        final createdAt = json['created_at']?.toString() ?? '';
+        final time = createdAt.length >= 16 ? createdAt.substring(11, 16) : '';
+
+        return ChatMessage(
+          text: json['text'] ?? '',
+          isAdmin: json['is_admin'] == true || json['is_admin'] == 1,
+          time: time,
+          isRead: json['is_read'] == true || json['is_read'] == 1,
+        );
+      }).toList();
+
+      setState(() {
+        _messages = msgs;
+        _isLoading = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
   }
 
   void _scrollToBottom() {
@@ -49,30 +82,28 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     }
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    final now = TimeOfDay.now();
-    final timeStr =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    setState(() {
-      _messages.add(ChatMessage(
+    try {
+      await ChatService.sendMessage(
+        conversationId: widget.conversation.id,
         text: text,
         isAdmin: true,
-        time: timeStr,
-        isRead: false,
-      ));
-    });
+      );
 
-    _textController.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      _textController.clear();
+      await _loadMessages();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
   }
-
-  // ─────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -84,20 +115,59 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             _buildAppBar(context),
             const Divider(height: 1, color: Color(0xFFF0F0F0)),
             Expanded(
-              child: GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 20),
-                  itemCount: _messages.length + 1, // +1 for date header
-                  itemBuilder: (_, i) {
-                    if (i == 0) return _buildDateHeader('วันนี้');
-                    final msg = _messages[i - 1];
-                    return _buildMessageBubble(msg);
-                  },
-                ),
-              ),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _green),
+                    )
+                  : _errorMessage != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  size: 50,
+                                  color: Colors.redAccent,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _errorMessage!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton(
+                                  onPressed: _loadMessages,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('ลองใหม่'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: () => FocusScope.of(context).unfocus(),
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 20,
+                            ),
+                            itemCount: _messages.length + 1,
+                            itemBuilder: (_, i) {
+                              if (i == 0) return _buildDateHeader('วันนี้');
+                              final msg = _messages[i - 1];
+                              return _buildMessageBubble(msg);
+                            },
+                          ),
+                        ),
             ),
             _buildInputBar(context),
           ],
@@ -106,23 +176,16 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // APP BAR
-  // ─────────────────────────────────────────────
-
   Widget _buildAppBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          // Back button
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back,
-                size: 24, color: _darkNavy),
+            child: const Icon(Icons.arrow_back, size: 24, color: _darkNavy),
           ),
           const SizedBox(width: 12),
-          // Title + subtitle
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -145,7 +208,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               ],
             ),
           ),
-          // Overflow menu
           GestureDetector(
             onTap: () => _showMoreOptions(context),
             child: Container(
@@ -155,8 +217,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 color: const Color(0xFFF5F7FA),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.more_vert,
-                  size: 20, color: Color(0xFF555555)),
+              child: const Icon(
+                Icons.more_vert,
+                size: 20,
+                color: Color(0xFF555555),
+              ),
             ),
           ),
         ],
@@ -164,17 +229,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // DATE HEADER
-  // ─────────────────────────────────────────────
-
   Widget _buildDateHeader(String date) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Center(
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           decoration: BoxDecoration(
             color: const Color(0xFFF0F0F0),
             borderRadius: BorderRadius.circular(20),
@@ -192,10 +252,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // MESSAGE BUBBLE
-  // ─────────────────────────────────────────────
-
   Widget _buildMessageBubble(ChatMessage msg) {
     final isAdmin = msg.isAdmin;
 
@@ -205,7 +261,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         crossAxisAlignment:
             isAdmin ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          // Sender name
           if (!isAdmin)
             Padding(
               padding: const EdgeInsets.only(left: 50, bottom: 4),
@@ -228,26 +283,24 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 ),
               ),
             ),
-
           Row(
             mainAxisAlignment:
                 isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // User avatar (left side)
               if (!isAdmin) ...[
                 _buildMiniAvatar(),
                 const SizedBox(width: 8),
               ],
-
-              // Bubble
               Flexible(
                 child: Container(
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.72,
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: isAdmin ? _green : Colors.white,
                     borderRadius: BorderRadius.only(
@@ -275,16 +328,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   ),
                 ),
               ),
-
-              // Admin avatar (right side)
               if (isAdmin) ...[
                 const SizedBox(width: 8),
                 _buildAdminAvatar(),
               ],
             ],
           ),
-
-          // Time + read status
           Padding(
             padding: EdgeInsets.only(
               top: 5,
@@ -296,11 +345,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
               children: [
                 if (isAdmin && msg.isRead)
-                  const Icon(Icons.done_all,
-                      size: 14, color: Color(0xFF4FC3F7)),
+                  const Icon(
+                    Icons.done_all,
+                    size: 14,
+                    color: Color(0xFF4FC3F7),
+                  ),
                 if (isAdmin && !msg.isRead)
-                  const Icon(Icons.done_all,
-                      size: 14, color: Color(0xFF9E9E9E)),
+                  const Icon(
+                    Icons.done_all,
+                    size: 14,
+                    color: Color(0xFF9E9E9E),
+                  ),
                 const SizedBox(width: 4),
                 Text(
                   msg.time,
@@ -336,30 +391,32 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     return Container(
       width: 36,
       height: 36,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: _green,
         shape: BoxShape.circle,
       ),
-      child: const Icon(Icons.support_agent_rounded,
-          color: Colors.white, size: 20),
+      child: const Icon(
+        Icons.support_agent_rounded,
+        color: Colors.white,
+        size: 20,
+      ),
     );
   }
-
-  // ─────────────────────────────────────────────
-  // INPUT BAR
-  // ─────────────────────────────────────────────
 
   Widget _buildInputBar(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          12, 10, 12, MediaQuery.of(context).viewInsets.bottom + 10),
+        12,
+        10,
+        12,
+        MediaQuery.of(context).viewInsets.bottom + 10,
+      ),
       decoration: const BoxDecoration(
         color: Color(0xFFF5F7FA),
         border: Border(top: BorderSide(color: Color(0xFFE8E8E8))),
       ),
       child: Row(
         children: [
-          // Attach
           GestureDetector(
             onTap: () {},
             child: Container(
@@ -370,12 +427,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE0E0E0)),
               ),
-              child: const Icon(Icons.add,
-                  size: 20, color: Color(0xFF757575)),
+              child: const Icon(Icons.add, size: 20, color: Color(0xFF757575)),
             ),
           ),
           const SizedBox(width: 8),
-          // Image
           GestureDetector(
             onTap: () {},
             child: Container(
@@ -386,12 +441,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE0E0E0)),
               ),
-              child: const Icon(Icons.image_outlined,
-                  size: 20, color: Color(0xFF757575)),
+              child: const Icon(
+                Icons.image_outlined,
+                size: 20,
+                color: Color(0xFF757575),
+              ),
             ),
           ),
           const SizedBox(width: 8),
-          // Text field
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxHeight: 100),
@@ -413,14 +470,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     color: Color(0xFFBDBDBD),
                   ),
                   contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   border: InputBorder.none,
                 ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          // Send
           GestureDetector(
             onTap: _sendMessage,
             child: Container(
@@ -437,18 +495,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.send_rounded,
-                  color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.send_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-
-  // ─────────────────────────────────────────────
-  // MORE OPTIONS
-  // ─────────────────────────────────────────────
 
   void _showMoreOptions(BuildContext context) {
     showModalBottomSheet(

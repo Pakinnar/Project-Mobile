@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-
+import 'Chat_room_admin_page.dart';
+import 'dashboard_admin_page.dart';
+import 'verify_admin_page.dart';
+import 'chat_list_admin_page.dart';
 // ─────────────────────────────────────────────
 // DATA MODEL (shared with users_admin_page.dart)
 // ─────────────────────────────────────────────
@@ -777,27 +780,56 @@ class _UserDetailPageState extends State<UserDetailPage> {
   // ─────────────────────────────────────────────
 
   Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      currentIndex: 2,
-      onTap: (_) {},
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: _green,
-      unselectedItemColor: const Color(0xFF9E9E9E),
-      backgroundColor: Colors.white,
-      elevation: 8,
-      selectedLabelStyle:
-          const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-      unselectedLabelStyle: const TextStyle(fontSize: 12),
-      items: const [
-        BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded), label: 'แดชบอร์ด'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.shield_outlined), label: 'ตรวจสอบ'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined), label: 'ผู้ใช้'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline), label: 'แชท'),
-      ],
-    );
-  }
+  return BottomNavigationBar(
+    currentIndex: 2,
+    onTap: (index) {
+      if (index == 0) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardAdminPage()),
+        );
+      } else if (index == 1) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const VerifyPage()),
+        );
+      } else if (index == 2) {
+        return;
+      } else if (index == 3) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ChatListPage()),
+        );
+      }
+    },
+    type: BottomNavigationBarType.fixed,
+    selectedItemColor: _green,
+    unselectedItemColor: const Color(0xFF9E9E9E),
+    backgroundColor: Colors.white,
+    elevation: 8,
+    selectedLabelStyle: const TextStyle(
+      fontWeight: FontWeight.w600,
+      fontSize: 12,
+    ),
+    unselectedLabelStyle: const TextStyle(fontSize: 12),
+    items: const [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.grid_view_rounded),
+        label: 'แดชบอร์ด',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.shield_outlined),
+        label: 'ตรวจสอบ',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.group_outlined),
+        label: 'ผู้ใช้',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.chat_bubble_outline),
+        label: 'แชท',
+      ),
+    ],
+  );
+}
 }

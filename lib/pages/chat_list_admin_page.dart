@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'chat_room_admin_page.dart';
-import '../services/auth_service.dart';
+import 'verify_admin_page.dart';
+import 'users_admin_page.dart';
+import 'dashboard_admin_page.dart';
+import '../services/chat_service.dart';
 
 // ─────────────────────────────────────────────
 // DATA MODELS
@@ -59,92 +62,63 @@ class _ChatListPageState extends State<ChatListPage> {
   static const Color _green = Color(0xFF00C853);
   static const Color _darkNavy = Color(0xFF1A1A2E);
 
-  final List<ChatConversation> _conversations = [
-    ChatConversation(
-      id: '1',
-      userName: 'สมชาย เข็มกลัด',
-      lastMessage: 'สอบถามเรื่องการชำระเงินครับ พอดีกดโอนแล้...',
-      time: '10:45',
-      priority: ChatPriority.urgent,
-      isOnline: true,
-      messages: [
-        ChatMessage(
-          text:
-              'สวัสดีครับ แอปค้างตอนกดชำระเงินครับ ผมลองกดหลายครั้งแล้วยังไม่ได้เลยครับ',
-          isAdmin: false,
-          time: '10:45',
-        ),
-        ChatMessage(
-          text:
-              'สวัสดีครับคุณสมชาย ทีมงานรับทราบปัญหาแล้วครับ รบกวนขอรูปภาพหน้าจอตอนเกิดปัญหา (Screenshot) หน่อยครับ ทีมงานกำลังเร่งตรวจสอบให้ทันทีครับ',
-          isAdmin: true,
-          time: '10:47',
-          isRead: true,
-        ),
-      ],
-    ),
-    ChatConversation(
-      id: '2',
-      userName: 'วิภาดา รักดี',
-      lastMessage: 'ขอบคุณที่ช่วยเหลือเรื่องการสมัครสมาชิกนะค...',
-      time: 'เมื่อวาน',
-      priority: ChatPriority.pending,
-      isOnline: false,
-      messages: [
-        ChatMessage(
-          text: 'สวัสดีค่ะ ขอสมัครสมาชิกใหม่ต้องทำยังไงบ้างคะ?',
-          isAdmin: false,
-          time: '09:00',
-        ),
-        ChatMessage(
-          text:
-              'สวัสดีครับคุณวิภาดา สามารถสมัครได้โดยกดที่เมนู "สมัครสมาชิก" แล้วกรอกข้อมูลให้ครบถ้วนครับ',
-          isAdmin: true,
-          time: '09:05',
-          isRead: true,
-        ),
-        ChatMessage(
-          text: 'ขอบคุณที่ช่วยเหลือเรื่องการสมัครสมาชิกนะคะ',
-          isAdmin: false,
-          time: '09:10',
-        ),
-      ],
-    ),
-    ChatConversation(
-      id: '3',
-      userName: 'ธนากร นามสมมติ',
-      lastMessage: 'ช่วยตรวจสอบสถานะการทำงานหน่อยครับ',
-      time: 'จันทร์',
-      priority: ChatPriority.medium,
-      isOnline: false,
-      messages: [
-        ChatMessage(
-          text: 'ช่วยตรวจสอบสถานะการทำงานหน่อยครับ งานผมยังไม่มีอัปเดตเลย',
-          isAdmin: false,
-          time: 'จันทร์',
-        ),
-      ],
-    ),
-    ChatConversation(
-      id: '4',
-      userName: 'มณีรัตน์ แสงทอง',
-      lastMessage: 'งานที่ส่งไปได้รับหรือยังคะ?',
-      time: 'อาทิตย์',
-      priority: ChatPriority.normal,
-      isOnline: false,
-      messages: [
-        ChatMessage(
-          text: 'งานที่ส่งไปได้รับหรือยังคะ?',
-          isAdmin: false,
-          time: 'อาทิตย์',
-        ),
-      ],
-    ),
-  ];
+  List<ChatConversation> _conversations = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  // ─────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+  }
+
+  Future<void> _loadConversations() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final data = await ChatService.getConversations();
+
+      final chats = data.map<ChatConversation>((json) {
+        return ChatConversation(
+          id: json['id'].toString(),
+          userName: json['user_name'] ?? '',
+          avatarUrl: json['avatar_url'],
+          lastMessage: json['last_message'] ?? '',
+          time: json['last_time'] ?? '',
+          priority: _mapPriority(json['priority']),
+          isOnline: json['is_online'] == true || json['is_online'] == 1,
+          messages: const [],
+        );
+      }).toList();
+
+      setState(() {
+        _conversations = chats;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  ChatPriority _mapPriority(String? value) {
+    switch (value) {
+      case 'urgent':
+        return ChatPriority.urgent;
+      case 'pending':
+        return ChatPriority.pending;
+      case 'medium':
+        return ChatPriority.medium;
+      case 'normal':
+      default:
+        return ChatPriority.normal;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,17 +131,59 @@ class _ChatListPageState extends State<ChatListPage> {
             _buildHeader(),
             _buildTabBar(),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.only(top: 8, bottom: 80),
-                itemCount: _conversations.length,
-                separatorBuilder: (_, __) => const Divider(
-                  height: 1,
-                  indent: 80,
-                  endIndent: 20,
-                  color: Color(0xFFF0F0F0),
-                ),
-                itemBuilder: (_, i) => _buildChatTile(_conversations[i]),
-              ),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _green),
+                    )
+                  : _errorMessage != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: Colors.redAccent,
+                                  size: 50,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _errorMessage!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton(
+                                  onPressed: _loadConversations,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('ลองใหม่'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadConversations,
+                          color: _green,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.only(top: 8, bottom: 80),
+                            itemCount: _conversations.length,
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              indent: 80,
+                              endIndent: 20,
+                              color: Color(0xFFF0F0F0),
+                            ),
+                            itemBuilder: (_, i) =>
+                                _buildChatTile(_conversations[i]),
+                          ),
+                        ),
             ),
           ],
         ),
@@ -187,10 +203,6 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // HEADER
-  // ─────────────────────────────────────────────
-
   Widget _buildHeader() {
     return const Padding(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -206,10 +218,6 @@ class _ChatListPageState extends State<ChatListPage> {
       ),
     );
   }
-
-  // ─────────────────────────────────────────────
-  // TAB BAR
-  // ─────────────────────────────────────────────
 
   Widget _buildTabBar() {
     return Column(
@@ -229,7 +237,8 @@ class _ChatListPageState extends State<ChatListPage> {
               ),
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: _green,
                   borderRadius: BorderRadius.circular(20),
@@ -261,10 +270,6 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // CHAT TILE
-  // ─────────────────────────────────────────────
-
   Widget _buildChatTile(ChatConversation chat) {
     return InkWell(
       onTap: () => _openChat(chat),
@@ -273,15 +278,12 @@ class _ChatListPageState extends State<ChatListPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar
             _buildAvatar(chat),
             const SizedBox(width: 14),
-            // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name + Time
                   Row(
                     children: [
                       Expanded(
@@ -304,7 +306,6 @@ class _ChatListPageState extends State<ChatListPage> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  // Last message
                   Text(
                     chat.lastMessage,
                     maxLines: 1,
@@ -315,7 +316,6 @@ class _ChatListPageState extends State<ChatListPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Priority badge
                   _buildPriorityBadge(chat.priority),
                 ],
               ),
@@ -332,12 +332,11 @@ class _ChatListPageState extends State<ChatListPage> {
         CircleAvatar(
           radius: 28,
           backgroundColor: const Color(0xFFEEEEEE),
-          backgroundImage: chat.avatarUrl != null
-              ? NetworkImage(chat.avatarUrl!)
-              : null,
+          backgroundImage:
+              chat.avatarUrl != null ? NetworkImage(chat.avatarUrl!) : null,
           child: chat.avatarUrl == null
               ? Text(
-                  chat.userName.characters.first,
+                  chat.userName.isNotEmpty ? chat.userName.characters.first : '?',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -409,28 +408,36 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // NAVIGATION
-  // ─────────────────────────────────────────────
-
   void _openChat(ChatConversation chat) {
-    void openChat(ChatConversation chat) {
-      Navigator.pushNamed(
-        context,
-        '/chat-room',
-        arguments: chat, // ✅ ถูก
-      );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatRoomPage(conversation: chat),
+      ),
+    );
   }
-
-  // ─────────────────────────────────────────────
-  // BOTTOM NAV
-  // ─────────────────────────────────────────────
 
   Widget _buildBottomNav() {
     return BottomNavigationBar(
-      currentIndex: 3, // แชท active
-      onTap: (_) {},
+      currentIndex: 3,
+      onTap: (index) {
+        if (index == 0) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DashboardAdminPage()),
+          );
+        } else if (index == 1) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const VerifyPage()),
+          );
+        } else if (index == 2) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const UsersPage()),
+          );
+        }
+      },
       type: BottomNavigationBarType.fixed,
       selectedItemColor: _green,
       unselectedItemColor: const Color(0xFF9E9E9E),
@@ -462,3 +469,4 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 }
+
