@@ -1,7 +1,23 @@
 import 'package:flutter/material.dart';
+import '../services/profile_api_service.dart';
 
-class EarningsPage extends StatelessWidget {
+class EarningsPage extends StatefulWidget {
   const EarningsPage({super.key});
+
+  @override
+  State<EarningsPage> createState() => _EarningsPageState();
+}
+
+class _EarningsPageState extends State<EarningsPage> {
+  // userId — ในอนาคตเปลี่ยนเป็นดึงจาก session/auth
+  final int userId = 3;
+  late Future<EarningsSummary> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ProfileApiService.getEarnings(userId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,137 +31,134 @@ class EarningsPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'สรุปรายได้',
-          style: TextStyle(
-            color: Color(0xFF111827),
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
+        title: const Text('สรุปรายได้',
+            style: TextStyle(
+                color: Color(0xFF111827),
+                fontWeight: FontWeight.w700,
+                fontSize: 18)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'รายได้สุทธิเดือน',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  '\$4,250',
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
-                  ),
+      body: FutureBuilder<EarningsSummary>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+                const SizedBox(height: 12),
+                Text('โหลดรายได้ไม่สำเร็จ\n${snapshot.error}',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => setState(() {
+                    _future = ProfileApiService.getEarnings(userId);
+                  }),
+                  child: const Text('ลองใหม่'),
+                ),
+              ]),
+            ));
+          }
+
+          final summary = snapshot.data!;
+          final changePercent = summary.changePercent;
+          final isPositive    = changePercent >= 0;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // ── รายได้เดือนนี้ ──
+              const Text('รายได้สุทธิเดือน',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+              const SizedBox(height: 8),
+              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                Text(
+                  '฿${_formatAmount(summary.totalMonth)}',
+                  style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827)),
                 ),
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8FFF0),
+                    color: isPositive
+                        ? const Color(0xFFE8FFF0)
+                        : const Color(0xFFFFEBEE),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    '↗ +12%',
+                  child: Text(
+                    '${isPositive ? '↗' : '↘'} ${changePercent.abs().toStringAsFixed(1)}%',
                     style: TextStyle(
-                      color: Color(0xFF16A34A),
+                      color: isPositive
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFE53935),
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'เพิ่มขึ้น 3,790 เดือนที่แล้ว',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF9CA3AF),
+              ]),
+              const SizedBox(height: 6),
+              Text(
+                'เดือนที่แล้ว ฿${_formatAmount(summary.previousMonth)}',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
               ),
-            ),
-            const SizedBox(height: 18),
-            _buildBalanceCard(),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Text(
-                  'รายได้ล่าสุด',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
-                  ),
-                ),
+              const SizedBox(height: 18),
+
+              // ── Balance card ──
+              _buildBalanceCard(summary.availableBalance),
+              const SizedBox(height: 24),
+
+              // ── รายการล่าสุด ──
+              Row(children: [
+                const Text('รายได้ล่าสุด',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
                 const Spacer(),
                 TextButton(
                   onPressed: () {},
-                  child: const Text(
-                    'ดูทั้งหมด',
-                    style: TextStyle(
-                      color: Color(0xFF16A34A),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: const Text('ดูทั้งหมด',
+                      style: TextStyle(
+                          color: Color(0xFF16A34A), fontWeight: FontWeight.w600)),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildIncomeTile(
-              icon: Icons.electrical_services,
-              iconBg: const Color(0xFFEAF2FF),
-              iconColor: const Color(0xFF3B82F6),
-              title: 'ติดตั้งระบบไฟภายในบ้าน',
-              subtitle: '12 มิ.ย. • 2 ชม. 30 นาที',
-              amount: '+\$125.00',
-            ),
-            const SizedBox(height: 10),
-            _buildIncomeTile(
-              icon: Icons.build_rounded,
-              iconBg: const Color(0xFFF4E8FF),
-              iconColor: const Color(0xFFA855F7),
-              title: 'โครงการออกแบบไฟสาธารณะ',
-              subtitle: '10 มิ.ย. • 6 ชม.',
-              amount: '+\$350.00',
-            ),
-            const SizedBox(height: 10),
-            _buildIncomeTile(
-              icon: Icons.home_repair_service,
-              iconBg: const Color(0xFFFFF1E8),
-              iconColor: const Color(0xFFF97316),
-              title: 'บริการซ่อมเครื่องใช้ไฟฟ้า',
-              subtitle: '08 มิ.ย. • 4 ชม. 15 นาที',
-              amount: '+\$85.50',
-            ),
-            const SizedBox(height: 10),
-            _buildIncomeTile(
-              icon: Icons.verified_user_outlined,
-              iconBg: const Color(0xFFE9FCEB),
-              iconColor: const Color(0xFF16A34A),
-              title: 'บริการติดตั้งกล้องดูแลความปลอดภัย',
-              subtitle: '05 มิ.ย. • 3 ชม. 00 นาที',
-              amount: '+\$160.00',
-            ),
-          ],
-        ),
+              ]),
+              const SizedBox(height: 8),
+
+              if (summary.recentItems.isEmpty)
+                const Center(child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text('ยังไม่มีรายการ',
+                      style: TextStyle(color: Colors.grey)),
+                ))
+              else
+                ...summary.recentItems.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _buildIncomeTile(item),
+                )),
+            ]),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildBalanceCard() {
+  String _formatAmount(double amount) {
+    if (amount >= 1000) {
+      return amount.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (m) => '${m[1]},',
+      );
+    }
+    return amount.toStringAsFixed(2);
+  }
+
+  Widget _buildBalanceCard(double balance) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -153,89 +166,86 @@ class EarningsPage extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: [BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 14, offset: const Offset(0, 6),
+        )],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'ยอดเงินถอนที่เหลือทั้งหมด',
-                style: TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: 13,
-                ),
-              ),
-              const Spacer(),
-              Icon(
-                Icons.account_balance_wallet_outlined,
-                size: 18,
-                color: Colors.grey[700],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            '\$1,240.50',
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Text('ยอดเงินที่ถอนได้',
+              style: TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
+          const Spacer(),
+          Icon(Icons.account_balance_wallet_outlined,
+              size: 18, color: Colors.grey[700]),
+        ]),
+        const SizedBox(height: 10),
+        Text('฿${_formatAmount(balance)}',
+            style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111827))),
+        const SizedBox(height: 4),
+        const Text('พร้อมสำหรับการถอน',
             style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF111827),
+                fontSize: 13,
+                color: Color(0xFF16A34A),
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 18),
+        SizedBox(
+          width: double.infinity, height: 48,
+          child: ElevatedButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.account_balance_wallet, size: 18),
+            label: const Text('ถอนเงิน',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              foregroundColor: Colors.white,
+              backgroundColor: const Color(0xFF19E65C),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'พร้อมสำหรับการถอน',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF16A34A),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.account_balance_wallet, size: 18),
-              label: const Text(
-                'ถอนเงิน',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                elevation: 0,
-                foregroundColor: Colors.white,
-                backgroundColor: const Color(0xFF19E65C),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
-  Widget _buildIncomeTile({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required String amount,
-  }) {
+  Widget _buildIncomeTile(EarningItem item) {
+    // icon ตาม title keyword
+    final title = item.title ?? 'รายได้';
+    IconData icon; Color iconBg; Color iconColor;
+
+    if (title.contains('ไฟ')) {
+      icon = Icons.electrical_services;
+      iconBg = const Color(0xFFEAF2FF);
+      iconColor = const Color(0xFF3B82F6);
+    } else if (title.contains('ออกแบบ') || title.contains('โครงการ')) {
+      icon = Icons.build_rounded;
+      iconBg = const Color(0xFFF4E8FF);
+      iconColor = const Color(0xFFA855F7);
+    } else if (title.contains('ซ่อม')) {
+      icon = Icons.home_repair_service;
+      iconBg = const Color(0xFFFFF1E8);
+      iconColor = const Color(0xFFF97316);
+    } else {
+      icon = Icons.work_outline;
+      iconBg = const Color(0xFFE9FCEB);
+      iconColor = const Color(0xFF16A34A);
+    }
+
+    // format date
+    String dateStr = '';
+    if (item.workDate != null) {
+      try {
+        final dt = DateTime.parse(item.workDate!).toLocal();
+        dateStr = '${dt.day} ${_monthTh(dt.month)} ${dt.year + 543}';
+      } catch (_) {
+        dateStr = item.workDate!;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -243,52 +253,37 @@ class EarningsPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF0F2F5)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            amount,
+      child: Row(children: [
+        Container(
+          width: 42, height: 42,
+          decoration: BoxDecoration(
+              color: iconBg, borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
+          const SizedBox(height: 4),
+          Text(dateStr,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+        ])),
+        const SizedBox(width: 10),
+        Text('+฿${item.amount.toStringAsFixed(2)}',
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
-          ),
-        ],
-      ),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827))),
+      ]),
     );
+  }
+
+  String _monthTh(int m) {
+    const months = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.',
+        'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    return m >= 1 && m <= 12 ? months[m] : '';
   }
 }

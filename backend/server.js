@@ -37,4 +37,7 @@ app.use('/api/verify', verifyRoutes);
 const chatRoutes = require('./routes/chat');
 app.use('/api/chat', chatRoutes);
 
+const profilePageRoutes = require('./routes/profile_page');
+app.use('/api', profilePageRoutes);
+
 

@@ -1,7 +1,35 @@
 import 'package:flutter/material.dart';
+import '../services/profile_api_service.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late Future<UserProfile> _profileFuture;
+
+  // ตอนนี้ fix userId ไว้ก่อน
+  // ภายหลังค่อยเปลี่ยนเป็นดึงจาก login/session
+  final int userId = 3;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  void _loadProfile() {
+    _profileFuture = ProfileApiService.getProfile(userId);
+  }
+
+  Future<void> _refreshProfile() async {
+    setState(() {
+      _loadProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,62 +45,102 @@ class ProfilePage extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 16),
-            _buildAboutSection(),
-            const SizedBox(height: 24),
-            _buildPortfolioSection(context),
-            const SizedBox(height: 24),
-            _buildReviewSection(context),
-          ],
-        ),
+      body: FutureBuilder<UserProfile>(
+        future: _profileFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'โหลดโปรไฟล์ไม่สำเร็จ\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          final profile = snapshot.data!;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context, profile),
+                const SizedBox(height: 16),
+                _buildAboutSection(profile),
+                const SizedBox(height: 24),
+                _buildPortfolioSection(context),
+                const SizedBox(height: 24),
+                _buildReviewSection(context),
+              ],
+            ),
+          );
+        },
       ),
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, UserProfile profile) {
+    final String? imageUrl = profile.profileImageUrl;
+    final ImageProvider imageProvider =
+        (imageUrl != null && imageUrl.isNotEmpty)
+            ? NetworkImage(imageUrl)
+            : const AssetImage('assets/alex_rivera.jpg');
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         CircleAvatar(
           radius: 45,
-          backgroundImage: const AssetImage('assets/alex_rivera.jpg'),
+          backgroundImage: imageProvider,
           child: Align(
             alignment: Alignment.bottomRight,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.green,
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(4),
-              child: const Icon(Icons.verified, color: Colors.white, size: 16),
-            ),
+            child: profile.isVerified
+                ? Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: const Icon(
+                      Icons.verified,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          "Alex Rivera",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Text(
+          profile.fullName.isNotEmpty ? profile.fullName : "Alex Rivera",
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        const Text(
-          "ช่างไฟฟ้าผู้เชี่ยวชาญและช่างซ่อมทั่วไป",
-          style: TextStyle(color: Colors.grey),
+        Text(
+          (profile.jobTitle != null && profile.jobTitle!.isNotEmpty)
+              ? profile.jobTitle!
+              : "ช่างไฟฟ้าผู้เชี่ยวชาญและช่างซ่อมทั่วไป",
+          style: const TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.star, color: Colors.amber, size: 20),
-            SizedBox(width: 4),
-            Text("4.9"),
-            SizedBox(width: 8),
-            Text("(120 รีวิว)", style: TextStyle(color: Colors.grey)),
+          children: [
+            const Icon(Icons.star, color: Colors.amber, size: 20),
+            const SizedBox(width: 4),
+            Text(profile.rating.toStringAsFixed(1)),
+            const SizedBox(width: 8),
+            Text(
+              "(${profile.totalJobs} งาน)",
+              style: const TextStyle(color: Colors.grey),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -80,8 +148,16 @@ class ProfilePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pushNamed(context, '/edit-profile');
+              onPressed: () async {
+                final result = await Navigator.pushNamed(
+                  context,
+                  '/edit-profile',
+                  arguments: userId,
+                );
+
+                if (result == true) {
+                  await _refreshProfile();
+                }
               },
               icon: const Icon(Icons.edit, color: Colors.white),
               label: const Text("แก้ไขโปรไฟล์"),
@@ -119,17 +195,23 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildAboutSection() {
+  Widget _buildAboutSection(UserProfile profile) {
+    final bio = (profile.bio != null && profile.bio!.trim().isNotEmpty)
+        ? profile.bio!
+        : "มีประสบการณ์มากกว่า 10 ปีในงานไฟฟ้าและงานซ่อมแซมบ้านทั่วไป "
+            "ฉันมุ่งมั่นใจในฝีมือที่มีคุณภาพและการบริการที่เชื่อถือได้ "
+            "มีใบอนุญาตและประกันครบถ้วน เชี่ยวชาญในการติดตั้งระบบสมาร์ทโฮม";
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.person_outline, color: Colors.green),
               SizedBox(width: 8),
@@ -139,13 +221,34 @@ class ProfilePage extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            "มีประสบการณ์มากกว่า 10 ปีในงานไฟฟ้าและงานซ่อมแซมบ้านทั่วไป "
-            "ฉันมุ่งมั่นใจในฝีมือที่มีคุณภาพและการบริการที่เชื่อถือได้ "
-            "มีใบอนุญาตและประกันครบถ้วน เชี่ยวชาญในการติดตั้งระบบสมาร์ทโฮม",
-            style: TextStyle(color: Colors.black87, height: 1.4),
+            bio,
+            style: const TextStyle(color: Colors.black87, height: 1.4),
           ),
+          if (profile.skills.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: profile.skills.map((skill) {
+                return Chip(
+                  label: Text(skill),
+                  backgroundColor: const Color(0xFFEFFAF1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: const BorderSide(color: Color(0xFFD7F5DF)),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Text(
+            "เบอร์โทร: ${(profile.phone != null && profile.phone!.isNotEmpty) ? profile.phone! : '-'}",
+          ),
+          const SizedBox(height: 4),
+          Text("อีเมล: ${profile.email}"),
         ],
       ),
     );

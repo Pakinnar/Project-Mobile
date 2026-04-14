@@ -9,7 +9,6 @@ import '../services/verify_service.dart';
 // ─────────────────────────────────────────────
 
 enum VerifyStatus { pending, approved, rejected }
-
 enum VerifyItemType { person, portfolio, company }
 
 class VerifyItem {
@@ -56,16 +55,21 @@ class VerifyPage extends StatefulWidget {
 class _VerifyPageState extends State<VerifyPage>
     with SingleTickerProviderStateMixin {
   static const Color _green = Color(0xFF00C853);
-  static const Color _red = Color(0xFFE53935);
+  static const Color _red   = Color(0xFFE53935);
 
   late TabController _tabController;
 
-  List<VerifyItem> _userItems = [];
+  List<VerifyItem> _userItems      = [];
   List<VerifyItem> _portfolioItems = [];
-  List<VerifyItem> _jobItems = [];
+  List<VerifyItem> _jobItems       = [];
 
   bool _isLoading = true;
   String? _errorMessage;
+
+  // ── จำนวน pending แต่ละ tab (ใช้แสดงใน tab label) ──
+  int get _userPending      => _userItems.where((e)      => e.status == VerifyStatus.pending).length;
+  int get _portfolioPending => _portfolioItems.where((e) => e.status == VerifyStatus.pending).length;
+  int get _jobPending       => _jobItems.where((e)       => e.status == VerifyStatus.pending).length;
 
   @override
   void initState() {
@@ -81,37 +85,17 @@ class _VerifyPageState extends State<VerifyPage>
     super.dispose();
   }
 
-  List<VerifyItem> get _currentItems {
-    switch (_tabController.index) {
-      case 0:
-        return _userItems;
-      case 1:
-        return _portfolioItems;
-      case 2:
-        return _jobItems;
-      default:
-        return _userItems;
-    }
-  }
-
-  int get _pendingCount =>
-      _currentItems.where((e) => e.status == VerifyStatus.pending).length;
-
   Future<void> _loadAllData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+    setState(() { _isLoading = true; _errorMessage = null; });
     try {
-      final users = await VerifyService.getVerifyItems('users');
+      final users      = await VerifyService.getVerifyItems('users');
       final portfolios = await VerifyService.getVerifyItems('portfolios');
-      final jobs = await VerifyService.getVerifyItems('jobs');
+      final jobs       = await VerifyService.getVerifyItems('jobs');
 
       setState(() {
-        _userItems = users.map((e) => _mapVerifyItem(e)).toList();
-        _portfolioItems = portfolios.map((e) => _mapVerifyItem(e)).toList();
-        _jobItems = jobs.map((e) => _mapVerifyItem(e)).toList();
+        _userItems      = users.map(_mapVerifyItem).toList();
+        _portfolioItems = portfolios.map(_mapVerifyItem).toList();
+        _jobItems       = jobs.map(_mapVerifyItem).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -124,53 +108,42 @@ class _VerifyPageState extends State<VerifyPage>
 
   VerifyItem _mapVerifyItem(dynamic json) {
     return VerifyItem(
-      id: json['id'].toString(),
-      badge: json['badge'] ?? 'PENDING',
-      timeAgo: '${json['timeAgo'] ?? ''}',
-      name: json['name'] ?? '',
+      id:          json['id'].toString(),
+      badge:       json['badge'] ?? 'PENDING',
+      timeAgo:     '${json['timeAgo'] ?? ''}',
+      name:        json['name'] ?? '',
       description: json['description'] ?? '',
-      idNumber: json['idNumber'],
-      location: json['location'],
-      salary: json['salary'],
-      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      imageUrl: json['imageUrl'],
-      type: _mapVerifyItemType(json['type']),
-      status: _mapVerifyStatus(json['status']),
+      idNumber:    json['idNumber'],
+      location:    json['location'],
+      salary:      json['salary'],
+      tags:        (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      imageUrl:    json['imageUrl'],
+      type:        _mapType(json['type']),
+      status:      _mapStatus(json['status']),
     );
   }
 
-  VerifyItemType _mapVerifyItemType(String? type) {
+  VerifyItemType _mapType(String? type) {
     switch (type) {
-      case 'portfolio':
-        return VerifyItemType.portfolio;
-      case 'company':
-        return VerifyItemType.company;
-      case 'person':
-      default:
-        return VerifyItemType.person;
+      case 'portfolio': return VerifyItemType.portfolio;
+      case 'company':   return VerifyItemType.company;
+      default:          return VerifyItemType.person;
     }
   }
 
-  VerifyStatus _mapVerifyStatus(String? status) {
+  VerifyStatus _mapStatus(String? status) {
     switch (status) {
-      case 'approved':
-        return VerifyStatus.approved;
-      case 'rejected':
-        return VerifyStatus.rejected;
-      case 'pending':
-      default:
-        return VerifyStatus.pending;
+      case 'approved': return VerifyStatus.approved;
+      case 'rejected': return VerifyStatus.rejected;
+      default:         return VerifyStatus.pending;
     }
   }
 
   String _getApiType(VerifyItemType type) {
     switch (type) {
-      case VerifyItemType.person:
-        return 'users';
-      case VerifyItemType.portfolio:
-        return 'portfolios';
-      case VerifyItemType.company:
-        return 'jobs';
+      case VerifyItemType.person:    return 'users';
+      case VerifyItemType.portfolio: return 'portfolios';
+      case VerifyItemType.company:   return 'jobs';
     }
   }
 
@@ -194,9 +167,7 @@ class _VerifyPageState extends State<VerifyPage>
                   _buildTabs(),
                   Expanded(
                     child: _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(color: _green),
-                          )
+                        ? const Center(child: CircularProgressIndicator(color: _green))
                         : _errorMessage != null
                         ? _buildErrorState()
                         : RefreshIndicator(
@@ -205,12 +176,9 @@ class _VerifyPageState extends State<VerifyPage>
                             child: TabBarView(
                               controller: _tabController,
                               children: [
-                                _buildTabContent(_userItems, _userItems.length),
-                                _buildTabContent(
-                                  _portfolioItems,
-                                  _portfolioItems.length,
-                                ),
-                                _buildTabContent(_jobItems, _jobItems.length),
+                                _buildTabContent(_userItems),
+                                _buildTabContent(_portfolioItems),
+                                _buildTabContent(_jobItems),
                               ],
                             ),
                           ),
@@ -229,34 +197,24 @@ class _VerifyPageState extends State<VerifyPage>
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 52, color: Colors.redAccent),
-            const SizedBox(height: 12),
-            Text(
-              _errorMessage ?? 'เกิดข้อผิดพลาด',
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.error_outline, size: 52, color: Colors.redAccent),
+          const SizedBox(height: 12),
+          Text(_errorMessage ?? 'เกิดข้อผิดพลาด',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.redAccent, fontSize: 14),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton(
-              onPressed: _loadAllData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _green,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('ลองใหม่'),
-            ),
-          ],
-        ),
+              style: const TextStyle(color: Colors.redAccent, fontSize: 14)),
+          const SizedBox(height: 14),
+          ElevatedButton(
+            onPressed: _loadAllData,
+            style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: Colors.white),
+            child: const Text('ลองใหม่'),
+          ),
+        ]),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────
-  // APP BAR
-  // ─────────────────────────────────────────────
+  // ─── APP BAR ─────────────────────────────────
 
   Widget _buildAppBar() {
     return Container(
@@ -265,44 +223,27 @@ class _VerifyPageState extends State<VerifyPage>
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 40, height: 40,
             decoration: BoxDecoration(
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.local_activity_outlined,
-              color: _green,
-              size: 22,
-            ),
+            child: const Icon(Icons.local_activity_outlined, color: _green, size: 22),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Local Job Hub Admin',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A2E),
-                ),
-              ),
-              Text(
-                'ระบบจัดการข้อมูลหลังบ้าน',
-                style: TextStyle(fontSize: 11, color: Color(0xFF9E9E9E)),
-              ),
-            ],
-          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
+            Text('Local Job Hub Admin',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
+            Text('ระบบจัดการข้อมูลหลังบ้าน',
+                style: TextStyle(fontSize: 11, color: Color(0xFF9E9E9E))),
+          ]),
         ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────
-  // TABS
-  // ─────────────────────────────────────────────
+  // ─── TABS ─────────────────────────────────────
+  // ✅ แสดงเลข pending จริง ไม่ใช่ total
 
   Widget _buildTabs() {
     return Container(
@@ -312,14 +253,8 @@ class _VerifyPageState extends State<VerifyPage>
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              'ตรวจสอบข้อมูล',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A2E),
-              ),
-            ),
+            child: Text('ตรวจสอบข้อมูล',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
           ),
           TabBar(
             controller: _tabController,
@@ -327,18 +262,13 @@ class _VerifyPageState extends State<VerifyPage>
             unselectedLabelColor: const Color(0xFF757575),
             indicatorColor: _green,
             indicatorWeight: 2.5,
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
+            labelStyle:           const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             tabs: [
-              Tab(text: 'ผู้ใช้งาน (${_userItems.length})'),
-              Tab(text: 'พอร์ตโฟลิโอ (${_portfolioItems.length})'),
-              Tab(text: 'งาน (${_jobItems.length})'),
+              // ✅ ตัวเลขใน () คือ pending จริง
+              Tab(text: 'ผู้ใช้งาน ($_userPending)'),
+              Tab(text: 'พอร์ตโฟลิโอ ($_portfolioPending)'),
+              Tab(text: 'งาน ($_jobPending)'),
             ],
           ),
         ],
@@ -346,26 +276,18 @@ class _VerifyPageState extends State<VerifyPage>
     );
   }
 
-  // ─────────────────────────────────────────────
-  // TAB CONTENT
-  // ─────────────────────────────────────────────
+  // ─── TAB CONTENT ─────────────────────────────
 
-  Widget _buildTabContent(List<VerifyItem> items, int totalCount) {
-    final pendingItems = items
-        .where((e) => e.status == VerifyStatus.pending)
-        .toList();
+  Widget _buildTabContent(List<VerifyItem> items) {
+    final pendingItems = items.where((e) => e.status == VerifyStatus.pending).toList();
 
     if (pendingItems.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: const [
           SizedBox(height: 120),
-          Center(
-            child: Text(
-              'ไม่มีข้อมูลสำหรับตรวจสอบ',
-              style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
-            ),
-          ),
+          Center(child: Text('ไม่มีข้อมูลสำหรับตรวจสอบ',
+              style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)))),
         ],
       );
     }
@@ -379,31 +301,13 @@ class _VerifyPageState extends State<VerifyPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'รายการที่รอการตรวจสอบ',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A2E),
-                ),
-              ),
+              const Text('รายการที่รอการตรวจสอบ',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1A1A2E))),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF9C4),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'รอดำเนินการ ${pendingItems.length} รายการ',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFF57F17),
-                  ),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(color: const Color(0xFFFFF9C4), borderRadius: BorderRadius.circular(20)),
+                child: Text('รอดำเนินการ ${pendingItems.length} รายการ',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFF57F17))),
               ),
             ],
           ),
@@ -415,9 +319,7 @@ class _VerifyPageState extends State<VerifyPage>
     );
   }
 
-  // ─────────────────────────────────────────────
-  // VERIFY CARD
-  // ─────────────────────────────────────────────
+  // ─── VERIFY CARD ─────────────────────────────
 
   Widget _buildVerifyCard(VerifyItem item) {
     return Container(
@@ -426,13 +328,7 @@ class _VerifyPageState extends State<VerifyPage>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,140 +340,61 @@ class _VerifyPageState extends State<VerifyPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        _buildPendingBadge(item.badge),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.circle,
-                          size: 5,
-                          color: Color(0xFF9E9E9E),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            item.timeAgo,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF9E9E9E),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    Row(children: [
+                      _pendingBadge(item.badge),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.circle, size: 5, color: Color(0xFF9E9E9E)),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(item.timeAgo, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)))),
+                    ]),
                     const SizedBox(height: 6),
-                    Text(
-                      item.name,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1A1A2E),
-                      ),
-                    ),
+                    Text(item.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
                     const SizedBox(height: 2),
-                    Text(
-                      item.description,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF757575),
-                      ),
-                    ),
+                    Text(item.description, style: const TextStyle(fontSize: 13, color: Color(0xFF757575))),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              _buildThumbnail(item.type),
+              _thumbnail(item.type),
             ],
           ),
           const SizedBox(height: 10),
           if (item.idNumber != null) ...[
-            Row(
-              children: [
-                const Icon(
-                  Icons.badge_outlined,
-                  size: 16,
-                  color: Color(0xFF9E9E9E),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'เลขบัตร: ${item.idNumber}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF555555),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            Row(children: [
+              const Icon(Icons.badge_outlined, size: 16, color: Color(0xFF9E9E9E)),
+              const SizedBox(width: 6),
+              Expanded(child: Text('เลขบัตร: ${item.idNumber}',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF555555)))),
+            ]),
             const SizedBox(height: 8),
           ],
           if (item.location != null) ...[
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: Color(0xFF9E9E9E),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    item.location!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF555555),
-                    ),
-                  ),
-                ),
-                if (item.salary != null) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 1,
-                    height: 14,
-                    color: const Color(0xFFE0E0E0),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    item.salary!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                ],
+            Row(children: [
+              const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF9E9E9E)),
+              const SizedBox(width: 4),
+              Expanded(child: Text(item.location!, style: const TextStyle(fontSize: 13, color: Color(0xFF555555)))),
+              if (item.salary != null) ...[
+                const SizedBox(width: 8),
+                Container(width: 1, height: 14, color: const Color(0xFFE0E0E0)),
+                const SizedBox(width: 8),
+                Text(item.salary!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
               ],
-            ),
+            ]),
             const SizedBox(height: 8),
           ],
           if (item.tags.isNotEmpty) ...[
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: item.tags
-                  .map(
-                    (tag) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F5F5),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE0E0E0)),
-                      ),
-                      child: Text(
-                        tag,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF555555),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
+              spacing: 6, runSpacing: 6,
+              children: item.tags.map((tag) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE0E0E0)),
+                ),
+                child: Text(tag, style: const TextStyle(fontSize: 12, color: Color(0xFF555555))),
+              )).toList(),
             ),
             const SizedBox(height: 10),
           ],
@@ -588,29 +405,12 @@ class _VerifyPageState extends State<VerifyPage>
                   onTap: () => _handleApprove(item),
                   child: Container(
                     height: 42,
-                    decoration: BoxDecoration(
-                      color: _green,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(
-                          Icons.check_circle_outline,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          'อนุมัติ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+                    decoration: BoxDecoration(color: _green, borderRadius: BorderRadius.circular(10)),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [
+                      Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                      SizedBox(width: 6),
+                      Text('อนุมัติ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                    ]),
                   ),
                 ),
               ),
@@ -620,45 +420,24 @@ class _VerifyPageState extends State<VerifyPage>
                   onTap: () => _handleReject(item),
                   child: Container(
                     height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFEBEE),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.cancel_outlined, color: _red, size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          'ปฏิเสธ',
-                          style: TextStyle(
-                            color: _red,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+                    decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(10)),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [
+                      Icon(Icons.cancel_outlined, color: _red, size: 18),
+                      SizedBox(width: 6),
+                      Text('ปฏิเสธ', style: TextStyle(color: _red, fontWeight: FontWeight.w700, fontSize: 14)),
+                    ]),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE0E0E0)),
-                  ),
-                  child: const Icon(
-                    Icons.remove_red_eye_outlined,
-                    color: Color(0xFF757575),
-                    size: 20,
-                  ),
+              Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE0E0E0)),
                 ),
+                child: const Icon(Icons.remove_red_eye_outlined, color: Color(0xFF757575), size: 20),
               ),
             ],
           ),
@@ -667,180 +446,88 @@ class _VerifyPageState extends State<VerifyPage>
     );
   }
 
-  // ─────────────────────────────────────────────
-  // THUMBNAIL
-  // ─────────────────────────────────────────────
-
-  Widget _buildThumbnail(VerifyItemType type) {
-    IconData icon;
-    Color bgColor;
-
+  Widget _thumbnail(VerifyItemType type) {
+    IconData icon; Color bg;
     switch (type) {
-      case VerifyItemType.person:
-        icon = Icons.person;
-        bgColor = const Color(0xFFE3F2FD);
-        break;
-      case VerifyItemType.portfolio:
-        icon = Icons.image_outlined;
-        bgColor = const Color(0xFFF3E5F5);
-        break;
-      case VerifyItemType.company:
-        icon = Icons.business_outlined;
-        bgColor = const Color(0xFFF5F5F5);
-        break;
+      case VerifyItemType.person:    icon = Icons.person;           bg = const Color(0xFFE3F2FD); break;
+      case VerifyItemType.portfolio: icon = Icons.image_outlined;   bg = const Color(0xFFF3E5F5); break;
+      case VerifyItemType.company:   icon = Icons.business_outlined; bg = const Color(0xFFF5F5F5); break;
     }
-
     return Container(
-      width: 72,
-      height: 80,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
+      width: 72, height: 80,
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
       child: Icon(icon, color: Colors.grey.shade500, size: 32),
     );
   }
 
-  // ─────────────────────────────────────────────
-  // PENDING BADGE
-  // ─────────────────────────────────────────────
-
-  Widget _buildPendingBadge(String text) {
+  Widget _pendingBadge(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF9C4),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFFF57F17),
-        ),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFFFF9C4), borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFF57F17))),
     );
   }
 
-  // ─────────────────────────────────────────────
-  // ACTIONS
-  // ─────────────────────────────────────────────
+  // ─── ACTIONS ─────────────────────────────────
 
   Future<void> _handleApprove(VerifyItem item) async {
     try {
-      await VerifyService.updateStatus(
-        type: _getApiType(item.type),
-        id: item.id,
-        status: 'approved',
-      );
-
+      await VerifyService.updateStatus(type: _getApiType(item.type), id: item.id, status: 'approved');
       await _loadAllData();
-
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('อนุมัติ "${item.name}" แล้ว'),
-          backgroundColor: _green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('อนุมัติ "${item.name}" แล้ว'),
+        backgroundColor: _green, duration: const Duration(seconds: 2),
+      ));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: _red,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.toString().replaceFirst('Exception: ', '')),
+        backgroundColor: _red,
+      ));
     }
   }
 
   Future<void> _handleReject(VerifyItem item) async {
     try {
-      await VerifyService.updateStatus(
-        type: _getApiType(item.type),
-        id: item.id,
-        status: 'rejected',
-      );
-
+      await VerifyService.updateStatus(type: _getApiType(item.type), id: item.id, status: 'rejected');
       await _loadAllData();
-
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ปฏิเสธ "${item.name}" แล้ว'),
-          backgroundColor: _red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('ปฏิเสธ "${item.name}" แล้ว'),
+        backgroundColor: _red, duration: const Duration(seconds: 2),
+      ));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: _red,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.toString().replaceFirst('Exception: ', '')),
+        backgroundColor: _red,
+      ));
     }
   }
 
-  // ─────────────────────────────────────────────
-  // BOTTOM NAV
-  // ─────────────────────────────────────────────
+  // ─── BOTTOM NAV ──────────────────────────────
 
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       currentIndex: 1,
       onTap: (index) {
-        if (index == 0) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const DashboardAdminPage()),
-          );
-        } else if (index == 1) {
-          return;
-        } else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const UsersPage()),
-          );
-        } else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const ChatListPage()),
-          );
-        }
+        if (index == 0) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DashboardAdminPage()));
+        if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UsersPage()));
+        if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ChatListPage()));
       },
       type: BottomNavigationBarType.fixed,
       selectedItemColor: _green,
       unselectedItemColor: const Color(0xFF9E9E9E),
       backgroundColor: Colors.white,
       elevation: 8,
-      selectedLabelStyle: const TextStyle(
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
+      selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
       unselectedLabelStyle: const TextStyle(fontSize: 12),
       items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.grid_view_rounded),
-          label: 'แดชบอร์ด',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shield_outlined),
-          label: 'ตรวจสอบ',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.group_outlined),
-          label: 'ผู้ใช้',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble_outline),
-          label: 'แชท',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded),   label: 'แดชบอร์ด'),
+        BottomNavigationBarItem(icon: Icon(Icons.shield_outlined),     label: 'ตรวจสอบ'),
+        BottomNavigationBarItem(icon: Icon(Icons.group_outlined),      label: 'ผู้ใช้'),
+        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'แชท'),
       ],
     );
   }
