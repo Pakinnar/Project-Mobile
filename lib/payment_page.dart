@@ -217,14 +217,12 @@ class _PaymentPageState extends State<PaymentPage> {
                           ),
                         );
 
-                        Navigator.push(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
                             builder: (context) => PaymentSuccessPage(
-                              job: {
-                                'title': job.title,
-                                'price': job.budget.toString(),
-                              },
+                              jobId: widget.jobId,
+                              workerUserId: widget.applicantId,
                             ),
                           ),
                         );

@@ -26,6 +26,9 @@ import 'category_page.dart';
 import 'myjobs_page.dart';
 import 'chat_page.dart';
 import 'job_tracking_page.dart';
+import 'job_status_page.dart';
+import 'payment_success_page.dart';
+import 'services/auth_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -82,7 +85,21 @@ class MyApp extends StatelessWidget {
         '/category': (context) => const CategoryPage(),
         '/myjobs': (context) => const MyJobsPage(),
         '/chat': (context) => const ChatPage(),
-        
+        '/job-tracking': (context) {
+          final jobData =
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
+          if (jobData == null) {
+            return const Scaffold(body: Center(child: Text('ไม่พบข้อมูลงาน')));
+          }
+          return JobTrackingPage(job: jobData);
+        },
+        '/job-status': (context) {
+          final jobData =
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>;
+          return JobStatusPage(job: jobData);
+        },
       },
     );
   }

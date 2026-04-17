@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'applicants_page.dart';
+import 'job_detail_hiring_page.dart';
 import 'services/job_api_service.dart';
 
 class JobStatusPage extends StatefulWidget {
@@ -12,45 +13,16 @@ class JobStatusPage extends StatefulWidget {
 }
 
 class _JobStatusPageState extends State<JobStatusPage> {
-  int? _applicantCount;
-  bool _loadingApplicants = true;
+  late Future<JobItem> _futureJob;
 
   @override
   void initState() {
     super.initState();
-    _loadApplicantCount();
+    final jobId = int.tryParse(widget.job['id']?.toString() ?? '') ?? 0;
+    _futureJob = JobApiService.getJobById(jobId);
   }
 
-  Future<void> _loadApplicantCount() async {
-    final jobId = int.tryParse(widget.job['id']?.toString() ?? '');
-    if (jobId == null) {
-      setState(() => _loadingApplicants = false);
-      return;
-    }
-
-    try {
-      final result = await JobApiService.getApplicants(jobId);
-      if (!mounted) return;
-      setState(() {
-        _applicantCount = result.applicants.length;
-        _loadingApplicants = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingApplicants = false);
-    }
-  }
-
-  Future<void> _cancelJob(BuildContext context) async {
-    final jobId = int.tryParse(widget.job['id']?.toString() ?? '');
-
-    if (jobId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ไม่พบรหัสงาน')),
-      );
-      return;
-    }
-
+  Future<void> _cancelJob(BuildContext context, int jobId) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -100,87 +72,109 @@ class _JobStatusPageState extends State<JobStatusPage> {
 
   @override
   Widget build(BuildContext context) {
-    final job = widget.job;
+    return FutureBuilder<JobItem>(
+      future: _futureJob,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'รายละเอียดงาน',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share_outlined, color: Colors.black),
-            onPressed: () {},
+        if (snapshot.hasError || !snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: Text('โหลดข้อมูลงานไม่สำเร็จ')),
+          );
+        }
+
+        final jobItem = snapshot.data!;
+        final uiJob = jobItem.toUiMap();
+
+        if (jobItem.paymentStatus == 'paid') {
+          return JobDetailHiringPage(job: uiJob);
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: const Text(
+              'รายละเอียดงาน',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share_outlined, color: Colors.black),
+                onPressed: () {},
+              ),
+            ],
+            centerTitle: true,
           ),
-        ],
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.network(
-              (job['img'] != null && job['img'].toString().isNotEmpty)
-                  ? job['img']
-                  : 'https://picsum.photos/id/119/600/300',
-              width: double.infinity,
-              height: 250,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 250,
-                color: Colors.grey[200],
-                child: const Icon(Icons.image, size: 50),
-              ),
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Image.network(
+                  uiJob['img'] != null && uiJob['img']!.isNotEmpty
+                      ? uiJob['img']!
+                      : 'https://picsum.photos/id/119/600/300',
+                  width: double.infinity,
+                  height: 250,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 250,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.image, size: 50),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderSection(uiJob),
+                      const SizedBox(height: 25),
+                      _buildInfoTile(
+                        Icons.location_on_outlined,
+                        'สถานที่ปฏิบัติงาน',
+                        uiJob['location'] ?? 'ไม่ระบุสถานที่',
+                      ),
+                      const SizedBox(height: 15),
+                      _buildInfoTile(
+                        Icons.calendar_today_outlined,
+                        'วันที่ทำงาน',
+                        uiJob['date'] ?? 'ไม่ระบุวันเวลา',
+                      ),
+                      const SizedBox(height: 30),
+                      const Text(
+                        'รายละเอียดงาน',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        uiJob['desc'] ?? 'ไม่มีรายละเอียดเพิ่มเติม',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          height: 1.6,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      _buildActionButtons(context, jobItem.id),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeaderSection(job),
-                  const SizedBox(height: 25),
-                  _buildInfoTile(
-                    Icons.location_on_outlined,
-                    'สถานที่ปฏิบัติงาน',
-                    job['location'] ?? 'ไม่ระบุสถานที่',
-                  ),
-                  const SizedBox(height: 15),
-                  _buildInfoTile(
-                    Icons.calendar_today_outlined,
-                    'วันที่ทำงาน',
-                    job['date'] ?? 'ไม่ระบุวันเวลา',
-                  ),
-                  const SizedBox(height: 30),
-                  const Text(
-                    'รายละเอียดงาน',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    job['desc'] ?? job['description'] ?? 'ไม่มีรายละเอียดเพิ่มเติม',
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      height: 1.6,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  _buildActionButtons(context),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -206,7 +200,7 @@ class _JobStatusPageState extends State<JobStatusPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          job['price'] != null ? '${job['price']} บาท' : 'ไม่ระบุราคา',
+          job['price'] != null ? '${job['price']}' : 'ไม่ระบุราคา',
           style: const TextStyle(
             fontSize: 26,
             color: Color(0xFF00E676),
@@ -217,25 +211,21 @@ class _JobStatusPageState extends State<JobStatusPage> {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
-    final jobId = int.tryParse(widget.job['id']?.toString() ?? '');
-
+  Widget _buildActionButtons(BuildContext context, int jobId) {
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
-            onPressed: jobId == null
-                ? null
-                : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ApplicantsPage(jobId: jobId),
-                      ),
-                    );
-                  },
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ApplicantsPage(jobId: jobId),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF00E676),
               elevation: 0,
@@ -243,11 +233,9 @@ class _JobStatusPageState extends State<JobStatusPage> {
                 borderRadius: BorderRadius.circular(15),
               ),
             ),
-            child: Text(
-              _loadingApplicants
-                  ? 'ดูผู้สมัครทั้งหมด (...)'
-                  : 'ดูผู้สมัครทั้งหมด (${_applicantCount ?? 0} คน)',
-              style: const TextStyle(
+            child: const Text(
+              'ดูผู้สมัครทั้งหมด',
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -260,7 +248,7 @@ class _JobStatusPageState extends State<JobStatusPage> {
           width: double.infinity,
           height: 55,
           child: OutlinedButton(
-            onPressed: () => _cancelJob(context),
+            onPressed: () => _cancelJob(context, jobId),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Colors.redAccent, width: 1.5),
               shape: RoundedRectangleBorder(

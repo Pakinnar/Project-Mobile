@@ -33,6 +33,7 @@ function formatJob(job) {
     work_date: job.work_date ?? '',
     work_time: job.work_time ?? '',
     status: job.status ?? 'open',
+    payment_status: job.payment_status ?? 'pending',
     user_id: job.user_id == null ? null : Number(job.user_id),
     assigned_worker_id:
       job.assigned_worker_id == null ? null : Number(job.assigned_worker_id),
@@ -42,12 +43,20 @@ function formatJob(job) {
 
 router.get('/jobs', async (req, res) => {
   try {
-    const [rows] = await db.query(
-      `SELECT *
-       FROM jobs
-       WHERE status <> 'closed'
-       ORDER BY created_at DESC, id DESC`
-    );
+    const [rows] = await db.query(`
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.status <> 'closed'
+      ORDER BY j.created_at DESC, j.id DESC
+    `);
 
     res.json(rows.map(formatJob));
   } catch (error) {
@@ -59,9 +68,20 @@ router.get('/jobs', async (req, res) => {
 router.get('/jobs/:id', async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT *
-       FROM jobs
-       WHERE id = ?`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.id = ?
+      LIMIT 1
+      `,
       [req.params.id]
     );
 
@@ -112,7 +132,20 @@ router.post('/jobs', upload.single('image'), async (req, res) => {
     );
 
     const [rows] = await db.query(
-      `SELECT * FROM jobs WHERE id = ?`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.id = ?
+      LIMIT 1
+      `,
       [result.insertId]
     );
 
@@ -126,11 +159,21 @@ router.post('/jobs', upload.single('image'), async (req, res) => {
 router.get('/jobs/user/:userId/hiring', async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT *
-       FROM jobs
-       WHERE user_id = ?
-         AND status <> 'closed'
-       ORDER BY created_at DESC, id DESC`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.user_id = ?
+        AND j.status <> 'closed'
+      ORDER BY j.created_at DESC, j.id DESC
+      `,
       [req.params.userId]
     );
 
@@ -207,7 +250,20 @@ router.put('/jobs/:id/cancel', async (req, res) => {
     );
 
     const [updatedRows] = await db.query(
-      `SELECT * FROM jobs WHERE id = ?`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.id = ?
+      LIMIT 1
+      `,
       [req.params.id]
     );
 
@@ -221,11 +277,21 @@ router.put('/jobs/:id/cancel', async (req, res) => {
 router.get('/jobs/user/:userId/accepted', async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT *
-       FROM jobs
-       WHERE assigned_worker_id = ?
-         AND status <> 'closed'
-       ORDER BY created_at DESC, id DESC`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.assigned_worker_id = ?
+        AND j.status <> 'closed'
+      ORDER BY j.created_at DESC, j.id DESC
+      `,
       [req.params.userId]
     );
 
@@ -236,13 +302,25 @@ router.get('/jobs/user/:userId/accepted', async (req, res) => {
   }
 });
 
-
 router.get('/jobs/:id/applicants', async (req, res) => {
   try {
     const jobId = req.params.id;
 
     const [jobRows] = await db.query(
-      `SELECT * FROM jobs WHERE id = ?`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.id = ?
+      LIMIT 1
+      `,
       [jobId]
     );
 
@@ -329,7 +407,20 @@ router.put('/jobs/:jobId/hire/:applicantId', async (req, res) => {
     );
 
     const [updatedJobRows] = await db.query(
-      `SELECT * FROM jobs WHERE id = ?`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.id = ?
+      LIMIT 1
+      `,
       [jobId]
     );
 
@@ -412,7 +503,20 @@ router.get('/jobs/:id/payment-summary/:workerUserId', async (req, res) => {
     const workerUserId = req.params.workerUserId;
 
     const [jobRows] = await db.query(
-      `SELECT * FROM jobs WHERE id = ?`,
+      `
+      SELECT
+        j.*,
+        (
+          SELECT p.status
+          FROM payments p
+          WHERE p.job_id = j.id
+          ORDER BY p.id DESC
+          LIMIT 1
+        ) AS payment_status
+      FROM jobs j
+      WHERE j.id = ?
+      LIMIT 1
+      `,
       [jobId]
     );
 

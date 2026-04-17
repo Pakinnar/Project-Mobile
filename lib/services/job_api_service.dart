@@ -3,9 +3,10 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class JobApiService {
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api';
   // Android Emulator:
   // static const String baseUrl = 'http://10.0.2.2:3000/api';
+
   static Future<JobApplicantsResponse> getApplicants(int jobId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/jobs/$jobId/applicants'),
@@ -214,6 +215,7 @@ class JobItem {
   final String workDate;
   final String workTime;
   final String status;
+  final String paymentStatus;
   final int? userId;
   final int? assignedWorkerId;
 
@@ -228,6 +230,7 @@ class JobItem {
     required this.workDate,
     required this.workTime,
     required this.status,
+    required this.paymentStatus,
     required this.userId,
     required this.assignedWorkerId,
   });
@@ -244,6 +247,7 @@ class JobItem {
       workDate: json['work_date']?.toString() ?? '',
       workTime: json['work_time']?.toString() ?? '',
       status: json['status']?.toString() ?? 'open',
+      paymentStatus: json['payment_status']?.toString() ?? 'pending',
       userId: json['user_id'] == null ? null : _toInt(json['user_id']),
       assignedWorkerId: json['assigned_worker_id'] == null
           ? null
@@ -265,6 +269,7 @@ class JobItem {
           ? '$workDate ${workTime.isNotEmpty ? '| $workTime' : ''}'.trim()
           : '',
       'status': status,
+      'payment_status': paymentStatus,
     };
   }
 }
@@ -436,5 +441,3 @@ class PaymentSummaryResponse {
     );
   }
 }
-
-

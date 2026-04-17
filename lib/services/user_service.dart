@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class UserService {
-  static const String baseUrl = 'http://localhost:3000/api/users';
+  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api/users';
 
   static Future<List<dynamic>> getUsers({
     String search = '',

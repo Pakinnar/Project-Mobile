@@ -3,12 +3,15 @@ import 'dart:io';
 import 'home_page.dart';
 import 'addjob_page.dart';
 import 'job_status_page.dart';
+import 'job_detail_hiring_page.dart';
+import 'job_tracking_page.dart';
 import 'category_page.dart';
 import 'chat_page.dart';
 import 'pages/profile_page.dart';
 import 'services/job_api_service.dart';
 import 'services/auth_service.dart';
 import 'job_detail_page.dart';
+
 
 class MyJobsPage extends StatefulWidget {
   const MyJobsPage({super.key});
@@ -83,71 +86,71 @@ class _MyJobsPageState extends State<MyJobsPage> {
         body: (_futureMyHiringJobs == null || _futureMyAcceptedJobs == null)
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
-          children: [
-            FutureBuilder<List<JobItem>>(
-              future: _futureMyHiringJobs,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                children: [
+                  FutureBuilder<List<JobItem>>(
+                    future: _futureMyHiringJobs,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'โหลดงานที่ฉันจ้างไม่สำเร็จ\n${snapshot.error}',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'โหลดงานที่ฉันจ้างไม่สำเร็จ\n${snapshot.error}',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
 
-                final jobs = snapshot.data ?? [];
+                      final jobs = snapshot.data ?? [];
 
-                if (jobs.isEmpty) {
-                  return _buildEmptyState('ยังไม่มีงานที่จ้าง');
-                }
+                      if (jobs.isEmpty) {
+                        return _buildEmptyState('ยังไม่มีงานที่จ้าง');
+                      }
 
-                return RefreshIndicator(
-                  onRefresh: _reloadJobs,
-                  child: _buildHiringJobTabContent(context, jobs),
-                );
-              },
-            ),
-            FutureBuilder<List<JobItem>>(
-              future: _futureMyAcceptedJobs,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                      return RefreshIndicator(
+                        onRefresh: _reloadJobs,
+                        child: _buildHiringJobTabContent(context, jobs),
+                      );
+                    },
+                  ),
+                  FutureBuilder<List<JobItem>>(
+                    future: _futureMyAcceptedJobs,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'โหลดงานที่ฉันรับไม่สำเร็จ\n${snapshot.error}',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'โหลดงานที่ฉันรับไม่สำเร็จ\n${snapshot.error}',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
 
-                final jobs = snapshot.data ?? [];
+                      final jobs = snapshot.data ?? [];
 
-                if (jobs.isEmpty) {
-                  return _buildEmptyState('ยังไม่มีงานที่รับ');
-                }
+                      if (jobs.isEmpty) {
+                        return _buildEmptyState('ยังไม่มีงานที่รับ');
+                      }
 
-                return RefreshIndicator(
-                  onRefresh: _reloadJobs,
-                  child: _buildAcceptedJobTabContent(context, jobs),
-                );
-              },
-            ),
-          ],
-        ),
+                      return RefreshIndicator(
+                        onRefresh: _reloadJobs,
+                        child: _buildAcceptedJobTabContent(context, jobs),
+                      );
+                    },
+                  ),
+                ],
+              ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: const Color(0xFF00E676),
           child: const Icon(Icons.add, color: Colors.white, size: 35),
@@ -257,7 +260,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'สถานะ: ${_statusText(job.status)}',
+                      'สถานะ: ${_statusText(job.status, job.paymentStatus)}',
                       style: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),
                   ],
@@ -279,8 +282,9 @@ class _MyJobsPageState extends State<MyJobsPage> {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              JobStatusPage(job: job.toUiMap()),
+                          builder: (context) => job.paymentStatus == 'paid'
+                              ? JobDetailHiringPage(job: job.toUiMap())
+                              : JobStatusPage(job: job.toUiMap()),
                         ),
                       );
 
@@ -360,7 +364,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'สถานะ: ${_statusText(job.status)}',
+                      'สถานะ: ${_statusText(job.status, job.paymentStatus)}',
                       style: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),
                   ],
@@ -382,7 +386,9 @@ class _MyJobsPageState extends State<MyJobsPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => JobDetailPage(job: job),
+                          builder: (context) => job.paymentStatus == 'paid'
+                              ? JobTrackingPage(job: job.toUiMap())
+                              : JobDetailPage(job: job),
                         ),
                       );
                     },
@@ -408,7 +414,11 @@ class _MyJobsPageState extends State<MyJobsPage> {
     );
   }
 
-  String _statusText(String status) {
+  String _statusText(String status, String paymentStatus) {
+    if (paymentStatus == 'paid') {
+      return 'กำลังดำเนินการ';
+    }
+
     switch (status) {
       case 'open':
         return 'กำลังรับสมัคร';

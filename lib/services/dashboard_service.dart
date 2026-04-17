@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardService {
-  static const String baseUrl = 'http://localhost:3000/api/dashboard';
+  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api/dashboard';
 
   static Future<Map<String, dynamic>> getStats() async {
     final prefs = await SharedPreferences.getInstance();
