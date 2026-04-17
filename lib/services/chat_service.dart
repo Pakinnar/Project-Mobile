@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatService {
-  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api/chat';
+  static const String baseUrl = 'http://localhost:3000/api/chat';
 
   static Future<List<dynamic>> getConversations() async {
     final prefs = await SharedPreferences.getInstance();

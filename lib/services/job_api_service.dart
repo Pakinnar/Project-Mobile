@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class JobApiService {
-  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api';
+  static const String baseUrl = 'http://localhost:3000/api';
   // Android Emulator:
   // static const String baseUrl = 'http://10.0.2.2:3000/api';
 
@@ -17,6 +17,125 @@ class JobApiService {
     }
 
     return JobApplicantsResponse.fromJson(jsonDecode(response.body));
+  }
+
+  static Future<SubmitReviewResponse> submitWorkerReview({
+    required int jobId,
+    required int workerUserId,
+    required int reviewerUserId,
+    required int rating,
+    required String reviewText,
+    double tipAmount = 0,
+    String imageUrl = '',
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/jobs/$jobId/review'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'worker_user_id': workerUserId,
+        'reviewer_user_id': reviewerUserId,
+        'rating': rating,
+        'review_text': reviewText,
+        'image_url': imageUrl,
+        'tip_amount': tipAmount,
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('ส่งรีวิวไม่สำเร็จ: ${response.body}');
+    }
+
+    return SubmitReviewResponse.fromJson(jsonDecode(response.body));
+  }
+
+  static Future<WorkerReviewsResponse> getWorkerReviews(
+    int workerUserId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/workers/$workerUserId/reviews'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('โหลดรีวิวไม่สำเร็จ: ${response.body}');
+    }
+
+    return WorkerReviewsResponse.fromJson(jsonDecode(response.body));
+  }
+
+  static Future<WorkerProfileResponse> getWorkerProfile(
+    int workerUserId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/workers/$workerUserId/profile'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('โหลดโปรไฟล์ช่างไม่สำเร็จ: ${response.body}');
+    }
+
+    return WorkerProfileResponse.fromJson(jsonDecode(response.body));
+  }
+
+  static Future<List<JobStatusUpdateItem>> getJobStatusUpdates(
+    int jobId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/jobs/$jobId/status-updates'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('โหลด timeline ไม่สำเร็จ: ${response.body}');
+    }
+
+    final data = jsonDecode(response.body) as List;
+    return data.map((e) => JobStatusUpdateItem.fromJson(e)).toList();
+  }
+
+  static Future<void> postJobStatusUpdate({
+    required int jobId,
+    required int workerUserId,
+    required String updateType,
+    required String message,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/jobs/$jobId/status-updates'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'worker_user_id': workerUserId,
+        'update_type': updateType,
+        'message': message,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('อัปเดตงานไม่สำเร็จ: ${response.body}');
+    }
+  }
+
+  static Future<void> markJobComplete({
+    required int jobId,
+    required int workerUserId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/jobs/$jobId/complete'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'worker_user_id': workerUserId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('เปลี่ยนสถานะงานไม่สำเร็จ: ${response.body}');
+    }
+  }
+
+  static Future<void> confirmJobComplete(int jobId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/jobs/$jobId/customer-confirm'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('ยืนยันงานไม่สำเร็จ: ${response.body}');
+    }
   }
 
   static Future<JobApplicantItem> getHiredWorker(int jobId) async {
@@ -219,6 +338,12 @@ class JobItem {
   final int? userId;
   final int? assignedWorkerId;
 
+  // Optional employer-related fields (used by JobAcceptedDetailPage)
+  final String? employerAvatarUrl;
+  final String? employerName;
+  final double? employerRating;
+  final int? employerReviewCount;
+
   JobItem({
     required this.id,
     required this.title,
@@ -233,9 +358,35 @@ class JobItem {
     required this.paymentStatus,
     required this.userId,
     required this.assignedWorkerId,
+    this.employerAvatarUrl,
+    this.employerName,
+    this.employerRating,
+    this.employerReviewCount,
   });
 
   factory JobItem.fromJson(Map<String, dynamic> json) {
+    // try multiple keys for employer avatar (backend may vary)
+    String? avatar;
+    if (json['employer_avatar_url'] != null) {
+      avatar = json['employer_avatar_url'].toString();
+    } else if (json['employer_avatar'] != null) {
+      avatar = json['employer_avatar'].toString();
+    } else if (json['employer_img'] != null) {
+      avatar = json['employer_img'].toString();
+    }
+    if (avatar != null && avatar.isEmpty) avatar = null;
+
+    final String? empName =
+        json['employer_name']?.toString() ?? json['employer']?.toString();
+
+    final double? empRating = json['employer_rating'] == null
+        ? null
+        : _toDouble(json['employer_rating']);
+
+    final int? empReviewCount = json['employer_review_count'] == null
+        ? null
+        : _toInt(json['employer_review_count']);
+
     return JobItem(
       id: _toInt(json['id']),
       title: json['title']?.toString() ?? '',
@@ -252,6 +403,10 @@ class JobItem {
       assignedWorkerId: json['assigned_worker_id'] == null
           ? null
           : _toInt(json['assigned_worker_id']),
+      employerAvatarUrl: avatar,
+      employerName: empName,
+      employerRating: empRating,
+      employerReviewCount: empReviewCount,
     );
   }
 
@@ -435,9 +590,199 @@ class PaymentSummaryResponse {
       ),
       payment: json['payment'] == null
           ? null
-          : PaymentRecord.fromJson(
-              Map<String, dynamic>.from(json['payment']),
-            ),
+          : PaymentRecord.fromJson(Map<String, dynamic>.from(json['payment'])),
+    );
+  }
+}
+
+class JobStatusUpdateItem {
+  final int id;
+  final int jobId;
+  final int workerUserId;
+  final String updateType;
+  final String message;
+  final String createdAt;
+  final String workerName;
+  final String workerImg;
+
+  JobStatusUpdateItem({
+    required this.id,
+    required this.jobId,
+    required this.workerUserId,
+    required this.updateType,
+    required this.message,
+    required this.createdAt,
+    required this.workerName,
+    required this.workerImg,
+  });
+
+  factory JobStatusUpdateItem.fromJson(Map<String, dynamic> json) {
+    return JobStatusUpdateItem(
+      id: _toInt(json['id']),
+      jobId: _toInt(json['job_id']),
+      workerUserId: _toInt(json['worker_user_id']),
+      updateType: json['update_type']?.toString() ?? 'note',
+      message: json['message']?.toString() ?? '',
+      createdAt: json['created_at']?.toString() ?? '',
+      workerName: json['worker_name']?.toString() ?? '',
+      workerImg: json['worker_img']?.toString() ?? '',
+    );
+  }
+}
+
+class WorkerReviewItem {
+  final int id;
+  final int jobId;
+  final int workerUserId;
+  final int reviewerUserId;
+  final int rating;
+  final String reviewText;
+  final String imageUrl;
+  final double tipAmount;
+  final String createdAt;
+  final String jobTitle;
+  final String reviewerName;
+  final String reviewerImg;
+
+  WorkerReviewItem({
+    required this.id,
+    required this.jobId,
+    required this.workerUserId,
+    required this.reviewerUserId,
+    required this.rating,
+    required this.reviewText,
+    required this.imageUrl,
+    required this.tipAmount,
+    required this.createdAt,
+    required this.jobTitle,
+    required this.reviewerName,
+    required this.reviewerImg,
+  });
+
+  factory WorkerReviewItem.fromJson(Map<String, dynamic> json) {
+    return WorkerReviewItem(
+      id: _toInt(json['id']),
+      jobId: _toInt(json['job_id']),
+      workerUserId: _toInt(json['worker_user_id']),
+      reviewerUserId: _toInt(json['reviewer_user_id']),
+      rating: _toInt(json['rating']),
+      reviewText: json['review_text']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
+      tipAmount: _toDouble(json['tip_amount']),
+      createdAt: json['created_at']?.toString() ?? '',
+      jobTitle: json['job_title']?.toString() ?? '',
+      reviewerName: json['reviewer_name']?.toString() ?? '',
+      reviewerImg: json['reviewer_img']?.toString() ?? '',
+    );
+  }
+}
+
+class WorkerReviewsResponse {
+  final double ratingAvg;
+  final int reviewCount;
+  final List<WorkerReviewItem> reviews;
+
+  WorkerReviewsResponse({
+    required this.ratingAvg,
+    required this.reviewCount,
+    required this.reviews,
+  });
+
+  factory WorkerReviewsResponse.fromJson(Map<String, dynamic> json) {
+    final summary = Map<String, dynamic>.from(json['summary'] ?? {});
+    final reviewsJson = (json['reviews'] as List?) ?? [];
+
+    return WorkerReviewsResponse(
+      ratingAvg: _toDouble(summary['rating_avg']),
+      reviewCount: _toInt(summary['review_count']),
+      reviews: reviewsJson
+          .map((e) => WorkerReviewItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+    );
+  }
+}
+
+class SubmitReviewResponse {
+  final int id;
+  final int jobId;
+  final int workerUserId;
+  final int reviewerUserId;
+  final int rating;
+  final String reviewText;
+  final String imageUrl;
+  final double tipAmount;
+  final String createdAt;
+  final double ratingAvg;
+  final int ratingCount;
+
+  SubmitReviewResponse({
+    required this.id,
+    required this.jobId,
+    required this.workerUserId,
+    required this.reviewerUserId,
+    required this.rating,
+    required this.reviewText,
+    required this.imageUrl,
+    required this.tipAmount,
+    required this.createdAt,
+    required this.ratingAvg,
+    required this.ratingCount,
+  });
+
+  factory SubmitReviewResponse.fromJson(Map<String, dynamic> json) {
+    return SubmitReviewResponse(
+      id: _toInt(json['id']),
+      jobId: _toInt(json['job_id']),
+      workerUserId: _toInt(json['worker_user_id']),
+      reviewerUserId: _toInt(json['reviewer_user_id']),
+      rating: _toInt(json['rating']),
+      reviewText: json['review_text']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
+      tipAmount: _toDouble(json['tip_amount']),
+      createdAt: json['created_at']?.toString() ?? '',
+      ratingAvg: _toDouble(json['rating_avg']),
+      ratingCount: _toInt(json['rating_count']),
+    );
+  }
+}
+
+class WorkerProfileResponse {
+  final int id;
+  final String name;
+  final String email;
+  final String phone;
+  final String img;
+  final String jobTitle;
+  final String desc;
+  final String skills;
+  final double ratingAvg;
+  final int ratingCount;
+
+  WorkerProfileResponse({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.img,
+    required this.jobTitle,
+    required this.desc,
+    required this.skills,
+    required this.ratingAvg,
+    required this.ratingCount,
+  });
+
+  factory WorkerProfileResponse.fromJson(Map<String, dynamic> json) {
+    return WorkerProfileResponse(
+      id: _toInt(json['id']),
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      img: json['img']?.toString() ?? '',
+      jobTitle: json['job_title']?.toString() ?? '',
+      desc: json['desc']?.toString() ?? '',
+      skills: json['skills']?.toString() ?? '',
+      ratingAvg: _toDouble(json['rating_avg']),
+      ratingCount: _toInt(json['rating_count']),
     );
   }
 }

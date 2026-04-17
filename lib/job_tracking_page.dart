@@ -1,313 +1,826 @@
 import 'package:flutter/material.dart';
-import 'review_page.dart'; 
-import 'home_page.dart'; 
-import 'myjobs_page.dart'; 
-import 'category_page.dart'; 
-import 'dart:io';
+import 'services/job_api_service.dart';
+import 'home_page.dart';
+import 'category_page.dart';
+import 'myjobs_page.dart';
+import 'chat_page.dart';
+import 'pages/profile_page.dart';
 
-class JobTrackingPage extends StatelessWidget {
-  final Map<String, dynamic> job;
+class JobAcceptedDetailPage extends StatefulWidget {
+  final JobItem job;
 
-  const JobTrackingPage({super.key, required this.job});
+  const JobAcceptedDetailPage({super.key, required this.job});
+
+  @override
+  State<JobAcceptedDetailPage> createState() => _JobAcceptedDetailPageState();
+}
+
+class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
+  static const Color _green = Color(0xFF00E676);
+  static const Color _darkNavy = Color(0xFF1A1A2E);
+
+  bool _isCompleting = false;
+  bool _isUpdating = false;
+  Future<WorkerProfileResponse>? _futureEmployerProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.job.userId != null) {
+      _futureEmployerProfile = JobApiService.getWorkerProfile(widget.job.userId!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final job = widget.job;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('รายละเอียดงาน', 
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildJobHeaderCard(),
-            const SizedBox(height: 20),
-            _buildEmployerCard(),
-            const SizedBox(height: 20),
-            _buildLocationCard(),
-            const SizedBox(height: 20),
-            _buildJobDetailCard(),
-            const SizedBox(height: 30),
-            _buildActionButtons(context),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  Widget _buildJobHeaderCard() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25),
-        image: DecorationImage(
-          image: job['img'] != null && job['img'].startsWith('http') 
-            ? NetworkImage(job['img']) 
-            : (job['img'] != null && job['img'].isNotEmpty)
-                ? FileImage(File(job['img'])) as ImageProvider
-                : const NetworkImage('https://picsum.photos/400/200'), 
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(25),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 100),
-            Row(
-              children: [
-                _badge('ยืนยันแล้ว', const Color(0xFF00E676)),
-                const SizedBox(width: 10),
-                _badge('GIG-29410', Colors.white.withOpacity(0.3)),
+      body: Column(
+        children: [
+          Expanded(
+            child: CustomScrollView(
+              slivers: [
+                _buildSliverAppBar(context, job),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTitleRow(job),
+                        const SizedBox(height: 6),
+                        _buildPrice(job),
+                        const SizedBox(height: 20),
+                        _buildInfoCard(job),
+                        const SizedBox(height: 20),
+                        _buildDescriptionSection(job),
+                        const SizedBox(height: 20),
+                        _buildEmployerCard(job),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(job['title'] ?? 'รับจ้างล้างแอร์ 3 เครื่อง', 
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 5),
-            Text('${job['price'] ?? '฿0'} ราคาเหมา', 
-              style: const TextStyle(color: Color(0xFF00E676), fontSize: 20, fontWeight: FontWeight.bold)),
-          ],
+          ),
+          _buildBottomActions(context),
+          _buildBottomNav(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar(BuildContext context, JobItem job) {
+    return SliverAppBar(
+      expandedHeight: 240,
+      pinned: true,
+      backgroundColor: Colors.white,
+      elevation: 0,
+      leading: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.arrow_back, color: _darkNavy, size: 22),
         ),
       ),
-    );
-  }
-
-  Widget _badge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
-      child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12)),
-    );
-  }
-
-  Widget _buildEmployerCard() {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 25,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=worker'),
-              ),
-              const SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('ผู้จ้าง', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text('คุณสมชาย สุขุมวิท', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.chat_bubble_outline, size: 18),
-              label: const Text('คุยกับผู้จ้าง'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.black87,
-                side: BorderSide(color: Colors.grey.shade300),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+      actions: [
+        GestureDetector(
+          onTap: () => _shareJob(job),
+          child: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(Icons.share_outlined, color: _darkNavy, size: 20),
             ),
           ),
-        ],
+        ),
+      ],
+      title: const Text(
+        'รายละเอียดงาน',
+        style: TextStyle(
+          color: _darkNavy,
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+        ),
       ),
+      centerTitle: true,
+      flexibleSpace: FlexibleSpaceBar(background: _buildHeroImage(job)),
     );
   }
 
-  Widget _buildLocationCard() {
+  Widget _buildHeroImage(JobItem job) {
+    if (job.imageUrl.startsWith('http')) {
+      return Image.network(
+        job.imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+      );
+    }
+    return _imagePlaceholder();
+  }
+
+  Widget _imagePlaceholder() {
     return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('สถานที่', style: TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 5),
-          Row(
-            children: const [
-              Icon(Icons.location_on, color: Color(0xFF00E676), size: 20),
-              SizedBox(width: 10),
-              Expanded(child: Text('คอนโดหรู ย่านอโศก-รัชดา ชั้น 12 กม.', style: TextStyle(fontWeight: FontWeight.w500))),
-            ],
-          ),
-          TextButton(
-            onPressed: () {},
-            child: const Text('ดูแผนที่ ↗', style: TextStyle(color: Color(0xFF00E676))),
-          ),
-        ],
+      color: const Color(0xFF4DB6AC),
+      child: const Center(
+        child: Icon(Icons.ac_unit_rounded, size: 64, color: Colors.white54),
       ),
     );
   }
 
-  Widget _buildJobDetailCard() {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.description_outlined, color: Color(0xFF00E676), size: 18),
-              SizedBox(width: 10),
-              Text('รายละเอียดงาน', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 15),
-          _buildCheckItem('ล้างแอร์แบบติดผนัง จำนวน 3 เครื่อง (9,000 - 12,000 BTU)'),
-          _buildCheckItem('เช็คระดับน้ำยาแอร์ และเติมน้ำยาแอร์ (ถ้าจำเป็น)'),
-          _buildCheckItem('ล้างทำความสะอาดแผ่นกรองและคอยล์ร้อน'),
-          _buildCheckItem('หน้างานเริ่มได้ตั้งแต่เวลา 10:00 น. เป็นต้นไป'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCheckItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.check_circle, color: Color(0xFF00E676), size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: Colors.black87))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildTitleRow(JobItem job) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          flex: 4,
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.refresh),
-            label: const Text('อัปเดตงาน'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              foregroundColor: Colors.black87,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Text(
+            job.title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: _darkNavy,
+              height: 1.3,
             ),
           ),
         ),
-        const SizedBox(width: 15),
+        const SizedBox(width: 10),
+        _buildStatusBadge(job.status),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    String label;
+    Color bg;
+    Color textColor;
+
+    switch (status) {
+      case 'open':
+        label = 'กำลังรับสมัคร';
+        bg = const Color(0xFFE8F5E9);
+        textColor = const Color(0xFF2E7D32);
+        break;
+      case 'pending':
+      case 'in_progress':
+      case 'waiting_review':
+        label = 'จ้างงานแล้ว';
+        bg = const Color(0xFFE8F5E9);
+        textColor = const Color(0xFF2E7D32);
+        break;
+      case 'closed':
+      case 'completed':
+        label = 'ปิดงานแล้ว';
+        bg = const Color(0xFFF5F5F5);
+        textColor = const Color(0xFF757575);
+        break;
+      default:
+        label = 'จ้างงานแล้ว';
+        bg = const Color(0xFFE8F5E9);
+        textColor = const Color(0xFF2E7D32);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrice(JobItem job) {
+    return Text(
+      '${job.budget.toStringAsFixed(0)} บาท',
+      style: const TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w800,
+        color: _green,
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(JobItem job) {
+    return Column(
+      children: [
+        _buildInfoRow(
+          icon: Icons.location_on_outlined,
+          title: 'สถานที่ปฏิบัติงาน',
+          subtitle: job.location,
+        ),
+        const SizedBox(height: 12),
+        _buildInfoRow(
+          icon: Icons.calendar_today_outlined,
+          title: 'วันที่ทำงาน',
+          subtitle: job.workDate.isNotEmpty ? job.workDate : '-',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F7FA),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 20, color: const Color(0xFF555555)),
+        ),
+        const SizedBox(width: 12),
         Expanded(
-          flex: 6,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ReviewPage(job: job)),
-              );
-            },
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('งานเสร็จสิ้น'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              backgroundColor: const Color(0xFF00E676),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              elevation: 0,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _darkNavy,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF757575)),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
+  Widget _buildDescriptionSection(JobItem job) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'รายละเอียดงาน',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: _darkNavy,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          job.description.isNotEmpty ? job.description : 'ไม่มีรายละเอียดเพิ่มเติม',
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.65,
+            color: Color(0xFF444444),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmployerCard(JobItem job) {
+    return FutureBuilder<WorkerProfileResponse>(
+      future: _futureEmployerProfile,
+      builder: (context, snapshot) {
+        final employer = snapshot.data;
+
+        final employerName =
+            employer?.name.isNotEmpty == true ? employer!.name : 'ผู้จ้างงาน';
+        final employerImg = employer?.img ?? '';
+        final employerRating = employer?.ratingAvg ?? 0;
+        final employerReviewCount = employer?.ratingCount ?? 0;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9F9F9),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEEEEEE)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F5E9),
+                  shape: BoxShape.circle,
+                ),
+                child: employerImg.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          employerImg,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.person_outline,
+                            color: Color(0xFF4CAF50),
+                            size: 24,
+                          ),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person_outline,
+                        color: Color(0xFF4CAF50),
+                        size: 24,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      employerName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _darkNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFFFFB300),
+                          size: 15,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${employerRating.toStringAsFixed(1)} ($employerReviewCount รีวิว)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF757575),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _goToChat(job),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 16,
+                        color: _green,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'คุยกับผู้จ้าง',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _green,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomActions(BuildContext context) {
     return Container(
-      height: 85,
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1))
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _navItem(context, Icons.home_outlined, 'หน้าหลัก', false, onTap: () {
-            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const HomePage()), (route) => false);
-          }),
-          _navItem(context, Icons.grid_view_outlined, 'หมวดหมู่', false, onTap: () {
-             Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryPage()));
-          }),
-          _navItem(context, Icons.assignment, 'งาน', true, onTap: () {
-             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MyJobsPage()));
-          }),
-          _navItem(context, Icons.chat_bubble_outline, 'แชท', false, onTap: () {}),
-          _navItem(context, Icons.person_outline, 'โปรไฟล์', false, onTap: () {}),
+          GestureDetector(
+            onTap: _isCompleting ? null : () => _confirmComplete(context),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              height: 52,
+              decoration: BoxDecoration(
+                color: _isCompleting ? _green.withOpacity(0.7) : _green,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: _green.withOpacity(0.35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: _isCompleting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(
+                            Icons.check_circle_outline_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'งานเสร็จสิ้น',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: _isUpdating ? null : () => _showUpdateSheet(context),
+            child: Container(
+              width: double.infinity,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.sync_rounded, color: Color(0xFF555555), size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'อัปเดตงาน',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF444444),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _navItem(BuildContext context, IconData icon, String label, bool isSelected, {VoidCallback? onTap}) {
-    final Color color = isSelected ? const Color(0xFF00E676) : const Color(0xFF94A3B8);
+  void _confirmComplete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(
+              Icons.check_circle_outline_rounded,
+              color: Color(0xFF00E676),
+              size: 22,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'ยืนยันงานเสร็จสิ้น',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+          ],
+        ),
+        content: const Text(
+          'คุณแน่ใจว่างานเสร็จสมบูรณ์แล้วใช่ไหม?\nหลังจากนี้ระบบจะรอลูกค้ายืนยัน',
+          style: TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF555555)),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('ยกเลิก'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    setState(() => _isCompleting = true);
+
+                    try {
+                      await JobApiService.markJobComplete(
+                        jobId: widget.job.id,
+                        workerUserId: widget.job.assignedWorkerId ?? 0,
+                      );
+
+                      if (!mounted) return;
+                      setState(() => _isCompleting = false);
+                      _showSnack('งานเสร็จสิ้นแล้ว รอลูกค้ายืนยัน', _green);
+                      Navigator.pop(context, true);
+                    } catch (e) {
+                      if (!mounted) return;
+                      setState(() => _isCompleting = false);
+                      _showSnack('เปลี่ยนสถานะงานไม่สำเร็จ', Colors.red);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _green,
+                  ),
+                  child: const Text(
+                    'ยืนยัน',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUpdateSheet(BuildContext context) {
+    String selectedType = 'in_progress';
+    final controller = TextEditingController();
+
+    final quickOptions = <Map<String, String>>[
+      {'type': 'traveling', 'label': 'กำลังเดินทาง', 'message': 'กำลังเดินทางไปหน้างาน'},
+      {'type': 'arrived', 'label': 'ถึงหน้างานแล้ว', 'message': 'ถึงหน้างานแล้ว'},
+      {'type': 'started', 'label': 'เริ่มงานแล้ว', 'message': 'เริ่มดำเนินงานแล้ว'},
+      {'type': 'in_progress', 'label': 'กำลังดำเนินงาน', 'message': 'กำลังดำเนินงานอยู่'},
+      {'type': 'almost_done', 'label': 'ใกล้เสร็จแล้ว', 'message': 'งานใกล้เสร็จแล้ว'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E0E0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text(
+                  'อัปเดตสถานะงาน',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: quickOptions.map((item) {
+                    final selected = selectedType == item['type'];
+                    return ChoiceChip(
+                      label: Text(item['label']!),
+                      selected: selected,
+                      onSelected: (_) {
+                        setSheetState(() {
+                          selectedType = item['type']!;
+                          controller.text = item['message']!;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: controller,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'เพิ่มหมายเหตุเพิ่มเติม',
+                    filled: true,
+                    fillColor: const Color(0xFFF5F7FA),
+                    contentPadding: const EdgeInsets.all(14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final message = controller.text.trim();
+                      if (message.isEmpty) return;
+
+                      Navigator.pop(context);
+                      setState(() => _isUpdating = true);
+
+                      try {
+                        await JobApiService.postJobStatusUpdate(
+                          jobId: widget.job.id,
+                          workerUserId: widget.job.assignedWorkerId ?? 0,
+                          updateType: selectedType,
+                          message: message,
+                        );
+
+                        if (!mounted) return;
+                        setState(() => _isUpdating = false);
+                        _showSnack('อัปเดตสถานะสำเร็จ ✓', _green);
+                      } catch (e) {
+                        if (!mounted) return;
+                        setState(() => _isUpdating = false);
+                        _showSnack('อัปเดตสถานะไม่สำเร็จ', Colors.red);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _green,
+                    ),
+                    child: const Text(
+                      'ส่งอัปเดต',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _goToChat(JobItem job) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const ChatPage()),
+    );
+  }
+
+  void _shareJob(JobItem job) {
+    _showSnack('คัดลอกลิงก์งานแล้ว', const Color(0xFF1565C0));
+  }
+
+  void _showSnack(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      height: 72,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _navItem(
+            context,
+            Icons.home_outlined,
+            'หน้าหลัก',
+            false,
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomePage()),
+            ),
+          ),
+          _navItem(
+            context,
+            Icons.grid_view_outlined,
+            'หมวดหมู่',
+            false,
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const CategoryPage()),
+            ),
+          ),
+          _navItem(
+            context,
+            Icons.work_outline_rounded,
+            'งานของฉัน',
+            true,
+            onTap: () {},
+          ),
+          _navItem(
+            context,
+            Icons.chat_bubble_outline,
+            'แชท',
+            false,
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ChatPage()),
+            ),
+          ),
+          _navItem(
+            context,
+            Icons.person_outline,
+            'โปรไฟล์',
+            false,
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfilePage()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    bool isSelected, {
+    VoidCallback? onTap,
+  }) {
+    final color = isSelected ? _green : const Color(0xFF94A3B8);
     return InkWell(
       onTap: onTap,
-      highlightColor: Colors.transparent,
-      splashColor: Colors.transparent,
       child: SizedBox(
-        width: 65, 
+        width: 65,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 26),
-            const SizedBox(height: 5),
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
             Text(
-              label, 
+              label,
               style: TextStyle(
-                fontSize: 11, 
-                color: color, 
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500
-              )
+                fontSize: 11,
+                color: color,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
             ),
           ],
         ),

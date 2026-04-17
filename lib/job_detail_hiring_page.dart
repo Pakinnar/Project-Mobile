@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'category_page.dart';
 import 'myjobs_page.dart';
-import 'job_status_page.dart';
 import 'worker_profile_page.dart';
+import 'job_progress_page.dart';
 import 'services/job_api_service.dart';
 
 class JobDetailHiringPage extends StatefulWidget {
@@ -17,6 +17,7 @@ class JobDetailHiringPage extends StatefulWidget {
 
 class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
   late Future<JobApplicantItem?> _futureHiredWorker;
+  Future<WorkerProfileResponse>? _futureWorkerProfile;
 
   @override
   void initState() {
@@ -29,7 +30,9 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
     if (jobId == null) return null;
 
     try {
-      return await JobApiService.getHiredWorker(jobId);
+      final worker = await JobApiService.getHiredWorker(jobId);
+      _futureWorkerProfile = JobApiService.getWorkerProfile(worker.workerUserId);
+      return worker;
     } catch (_) {
       return null;
     }
@@ -209,72 +212,100 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundImage:
-                hiredWorker.img.isNotEmpty ? NetworkImage(hiredWorker.img) : null,
-            child: hiredWorker.img.isEmpty
-                ? Text(
-                    hiredWorker.name.isNotEmpty
-                        ? hiredWorker.name.characters.first
-                        : '?',
-                  )
-                : null,
+    return FutureBuilder<WorkerProfileResponse>(
+      future: _futureWorkerProfile,
+      builder: (context, profileSnapshot) {
+        final profile = profileSnapshot.data;
+        final ratingAvg = profile?.ratingAvg ?? 0;
+        final ratingCount = profile?.ratingCount ?? 0;
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hiredWorker.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  hiredWorker.jobTitle.isNotEmpty
-                      ? hiredWorker.jobTitle
-                      : 'ไม่ระบุตำแหน่ง',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      WorkerProfilePage(applicant: hiredWorker),
-                ),
-              );
-            },
-            child: const Text(
-              'ดูโปรไฟล์',
-              style: TextStyle(
-                color: Color(0xFF00E676),
-                fontWeight: FontWeight.bold,
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundImage:
+                    hiredWorker.img.isNotEmpty ? NetworkImage(hiredWorker.img) : null,
+                child: hiredWorker.img.isEmpty
+                    ? Text(
+                        hiredWorker.name.isNotEmpty
+                            ? hiredWorker.name.characters.first
+                            : '?',
+                      )
+                    : null,
               ),
-            ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hiredWorker.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hiredWorker.jobTitle.isNotEmpty
+                          ? hiredWorker.jobTitle
+                          : 'ไม่ระบุตำแหน่ง',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFFFFB300),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${ratingAvg.toStringAsFixed(1)} ($ratingCount รีวิว)',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF374151),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          WorkerProfilePage(applicant: hiredWorker),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'ดูโปรไฟล์',
+                  style: TextStyle(
+                    color: Color(0xFF00E676),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -288,14 +319,23 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => JobStatusPage(job: widget.job),
-                ),
-              );
-            },
+            onPressed: hiredWorker == null
+                ? null
+                : () {
+                    final jobId =
+                        int.tryParse(widget.job['id']?.toString() ?? '') ?? 0;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => JobProgressPage(
+                          jobId: jobId,
+                          workerUserId: hiredWorker.workerUserId,
+                          job: widget.job,
+                        ),
+                      ),
+                    );
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF00E676),
               elevation: 0,

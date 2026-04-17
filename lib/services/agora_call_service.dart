@@ -4,8 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 
 class AgoraCallConfig {
-  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api';
-  
+  static const String baseUrl = 'http://localhost:3000/api';
 }
 
 class AgoraTokenResponse {

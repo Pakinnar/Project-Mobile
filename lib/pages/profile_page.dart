@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/profile_api_service.dart';
 import '../services/auth_service.dart';
+import '../services/job_api_service.dart';
 import '../home_page.dart';
 import '../category_page.dart';
 import '../myjobs_page.dart';
@@ -15,6 +16,8 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late Future<UserProfile> _profileFuture;
+  Future<WorkerReviewsResponse>? _reviewsFuture;
+  int? _currentUserId;
 
   @override
   void initState() {
@@ -23,9 +26,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _loadProfile() {
-    _profileFuture = AuthService.getCurrentUserId().then(
-      (userId) => ProfileApiService.getProfile(userId),
-    );
+    _profileFuture = AuthService.getCurrentUserId().then((userId) {
+      _currentUserId = userId;
+      _reviewsFuture = JobApiService.getWorkerReviews(userId);
+      return ProfileApiService.getProfile(userId);
+    });
   }
 
   Future<void> _refreshProfile() async {
@@ -92,109 +97,127 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildHeader(BuildContext context, UserProfile profile) {
     final String? imageUrl = profile.profileImageUrl;
-    final ImageProvider imageProvider =
-        (imageUrl != null && imageUrl.isNotEmpty)
-        ? NetworkImage(imageUrl)
-        : const AssetImage('assets/alex_rivera.jpg');
+    final ImageProvider? imageProvider =
+        (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        CircleAvatar(
-          radius: 45,
-          backgroundImage: imageProvider,
-          child: Align(
-            alignment: Alignment.bottomRight,
-            child: profile.isVerified
-                ? Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: const Icon(
-                      Icons.verified,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          profile.fullName.isNotEmpty ? profile.fullName : "Alex Rivera",
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          (profile.jobTitle != null && profile.jobTitle!.isNotEmpty)
-              ? profile.jobTitle!
-              : "",
-          style: const TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(height: 8),
-        Row(
+    return FutureBuilder<WorkerReviewsResponse>(
+      future: _reviewsFuture,
+      builder: (context, reviewSnapshot) {
+        final ratingAvg = reviewSnapshot.data?.ratingAvg ?? profile.rating;
+        final reviewCount = reviewSnapshot.data?.reviewCount ?? 0;
+
+        return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.star, color: Colors.amber, size: 20),
-            const SizedBox(width: 4),
-            Text(profile.rating.toStringAsFixed(1)),
-            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 45,
+              backgroundImage: imageProvider,
+              backgroundColor: const Color(0xFFE8F5E9),
+              child: imageProvider == null
+                  ? Text(
+                      profile.fullName.isNotEmpty
+                          ? profile.fullName.characters.first
+                          : '?',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF00E676),
+                      ),
+                    )
+                  : Align(
+                      alignment: Alignment.bottomRight,
+                      child: profile.isVerified
+                          ? Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              child: const Icon(
+                                Icons.verified,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+            ),
+            const SizedBox(height: 8),
             Text(
-              "(${profile.totalJobs} งาน)",
+              profile.fullName.isNotEmpty ? profile.fullName : "Alex Rivera",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              (profile.jobTitle != null && profile.jobTitle!.isNotEmpty)
+                  ? profile.jobTitle!
+                  : "",
               style: const TextStyle(color: Colors.grey),
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton.icon(
-              onPressed: () async {
-                final result = await Navigator.pushNamed(
-                  context,
-                  '/edit-profile',
-                  arguments: profile.id,
-                );
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.star, color: Colors.amber, size: 20),
+                const SizedBox(width: 4),
+                Text(ratingAvg.toStringAsFixed(1)),
+                const SizedBox(width: 8),
+                Text(
+                  "($reviewCount รีวิว)",
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.pushNamed(
+                      context,
+                      '/edit-profile',
+                      arguments: profile.id,
+                    );
 
-                if (result == true) {
-                  await _refreshProfile();
-                }
-              },
-              icon: const Icon(Icons.edit, color: Colors.white),
-              label: const Text("แก้ไขโปรไฟล์"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+                    if (result == true) {
+                      await _refreshProfile();
+                    }
+                  },
+                  icon: const Icon(Icons.edit, color: Colors.white),
+                  label: const Text("แก้ไขโปรไฟล์"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/earnings');
+                  },
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: const Text("ดูรายได้"),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pushNamed(context, '/earnings');
-              },
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: const Text("ดูรายได้"),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              ],
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -202,8 +225,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final bio = (profile.bio != null && profile.bio!.trim().isNotEmpty)
         ? profile.bio!
         : "มีประสบการณ์มากกว่า 10 ปีในงานไฟฟ้าและงานซ่อมแซมบ้านทั่วไป "
-              "ฉันมุ่งมั่นใจในฝีมือที่มีคุณภาพและการบริการที่เชื่อถือได้ "
-              "มีใบอนุญาตและประกันครบถ้วน เชี่ยวชาญในการติดตั้งระบบสมาร์ทโฮม";
+            "ฉันมุ่งมั่นใจในฝีมือที่มีคุณภาพและการบริการที่เชื่อถือได้ "
+            "มีใบอนุญาตและประกันครบถ้วน เชี่ยวชาญในการติดตั้งระบบสมาร์ทโฮม";
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -330,49 +353,114 @@ class _ProfilePageState extends State<ProfilePage> {
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
-        child: Image.asset(path, fit: BoxFit.cover),
+        child: Image.asset(
+          path,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: const Color(0xFFF1F5F9),
+              child: const Center(
+                child: Icon(Icons.image_outlined, color: Color(0xFF94A3B8)),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildReviewSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
+    return FutureBuilder<WorkerReviewsResponse>(
+      future: _reviewsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.star_border, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text(
+                    "รีวิว",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Center(child: CircularProgressIndicator()),
+            ],
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data;
+        final reviews = data?.reviews ?? [];
+        final ratingAvg = data?.ratingAvg ?? 0;
+        final reviewCount = data?.reviewCount ?? 0;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.star_border, color: Colors.green),
-            SizedBox(width: 8),
-            Text(
-              "รีวิว",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            Row(
+              children: [
+                const Icon(Icons.star_border, color: Colors.green),
+                const SizedBox(width: 8),
+                const Text(
+                  "รีวิว",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const Spacer(),
+                Text(
+                  '${ratingAvg.toStringAsFixed(1)} ($reviewCount)',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
             ),
-            Spacer(),
-            Text("4.9 (120)", style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 12),
+            if (reviews.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'ยังไม่มีรีวิว',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else ...[
+              ...reviews.take(2).map((review) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildReviewItem(
+                    review.reviewerName.isNotEmpty
+                        ? review.reviewerName
+                        : 'ผู้ใช้งาน',
+                    review.rating.toStringAsFixed(1),
+                    review.createdAt,
+                    review.reviewText.isNotEmpty ? review.reviewText : '-',
+                    reviewerImg: review.reviewerImg,
+                  ),
+                );
+              }),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/reviews');
+                },
+                child: Center(
+                  child: Text('ดูรีวิวทั้งหมด $reviewCount รายการ'),
+                ),
+              ),
+            ],
           ],
-        ),
-        const SizedBox(height: 12),
-        _buildReviewItem(
-          "Sarah Jenkins",
-          "5.0",
-          "2 วันที่แล้ว",
-          "อเล็กซ์ทำงานได้ยอดเยี่ยมมากในการติดตั้งไฟห้องครัวใหม่ของเรา เขาตรงต่อเวลา สะอาด และราคาคุ้มค่า",
-        ),
-        const SizedBox(height: 12),
-        _buildReviewItem(
-          "Michael Chen",
-          "4.8",
-          "1 สัปดาห์ที่แล้ว",
-          "งานเปลี่ยนกล่องฟิวส์ยอดเยี่ยมมาก มีความรู้มากและอธิบายทุกอย่างได้ชัดเจน",
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: () {
-            Navigator.pushNamed(context, '/reviews');
-          },
-          child: const Center(child: Text("ดูรีวิวทั้งหมด 120 รายการ")),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -380,8 +468,9 @@ class _ProfilePageState extends State<ProfilePage> {
     String name,
     String rating,
     String time,
-    String comment,
-  ) {
+    String comment, {
+    String reviewerImg = '',
+  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -391,9 +480,20 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CircleAvatar(
-            backgroundImage: AssetImage('assets/avatar_placeholder.png'),
+          CircleAvatar(
+            backgroundImage:
+                reviewerImg.isNotEmpty ? NetworkImage(reviewerImg) : null,
+            backgroundColor: const Color(0xFFE8F5E9),
             radius: 20,
+            child: reviewerImg.isEmpty
+                ? Text(
+                    name.isNotEmpty ? name.characters.first : '?',
+                    style: const TextStyle(
+                      color: Color(0xFF00E676),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(

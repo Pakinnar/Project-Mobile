@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class VerifyService {
-  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api/verify';
+  static const String baseUrl = 'http://localhost:3000/api/verify';
 
   static Future<List<dynamic>> getVerifyItems(String type) async {
     final response = await http.get(

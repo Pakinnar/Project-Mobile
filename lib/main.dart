@@ -29,6 +29,7 @@ import 'job_tracking_page.dart';
 import 'job_status_page.dart';
 import 'payment_success_page.dart';
 import 'services/auth_service.dart';
+import 'services/job_api_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -92,7 +93,7 @@ class MyApp extends StatelessWidget {
           if (jobData == null) {
             return const Scaffold(body: Center(child: Text('ไม่พบข้อมูลงาน')));
           }
-          return JobTrackingPage(job: jobData);
+          return JobAcceptedDetailPage(job: JobItem.fromJson(jobData));
         },
         '/job-status': (context) {
           final jobData =

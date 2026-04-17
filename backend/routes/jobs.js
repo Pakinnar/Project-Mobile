@@ -653,4 +653,423 @@ router.post('/jobs/:id/pay', async (req, res) => {
   }
 });
 
+router.get('/jobs/:id/status-updates', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        jsu.id,
+        jsu.job_id,
+        jsu.worker_user_id,
+        jsu.update_type,
+        jsu.message,
+        jsu.created_at,
+        u.full_name AS worker_name,
+        u.profile_image_url AS worker_img
+      FROM job_status_updates jsu
+      INNER JOIN users u ON u.id = jsu.worker_user_id
+      WHERE jsu.job_id = ?
+      ORDER BY jsu.created_at ASC, jsu.id ASC
+      `,
+      [jobId]
+    );
+
+    res.json(
+      rows.map((r) => ({
+        id: Number(r.id),
+        job_id: Number(r.job_id),
+        worker_user_id: Number(r.worker_user_id),
+        update_type: r.update_type ?? 'note',
+        message: r.message ?? '',
+        created_at: r.created_at,
+        worker_name: r.worker_name ?? '',
+        worker_img: r.worker_img ?? '',
+      }))
+    );
+  } catch (error) {
+    console.error('GET /jobs/:id/status-updates error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/jobs/:id/status-updates', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const { worker_user_id, update_type, message } = req.body;
+
+    const [jobRows] = await db.query(
+      `SELECT * FROM jobs WHERE id = ? LIMIT 1`,
+      [jobId]
+    );
+
+    if (!jobRows.length) {
+      return res.status(404).json({ message: 'ไม่พบงาน' });
+    }
+
+    const normalizedType = update_type || 'note';
+    const normalizedMessage = (message || '').trim();
+
+    if (!normalizedMessage) {
+      return res.status(400).json({ message: 'กรุณาระบุข้อความอัปเดต' });
+    }
+
+    await db.query(
+      `
+      INSERT INTO job_status_updates (
+        job_id,
+        worker_user_id,
+        update_type,
+        message
+      ) VALUES (?, ?, ?, ?)
+      `,
+      [jobId, worker_user_id, normalizedType, normalizedMessage]
+    );
+
+    await db.query(
+      `
+      UPDATE jobs
+      SET status = 'in_progress'
+      WHERE id = ?
+      `,
+      [jobId]
+    );
+
+    res.json({ message: 'อัปเดตสถานะงานสำเร็จ' });
+  } catch (error) {
+    console.error('POST /jobs/:id/status-updates error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/jobs/:id/complete', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const { worker_user_id } = req.body;
+
+    const [jobRows] = await db.query(
+      `SELECT * FROM jobs WHERE id = ? LIMIT 1`,
+      [jobId]
+    );
+
+    if (!jobRows.length) {
+      return res.status(404).json({ message: 'ไม่พบงาน' });
+    }
+
+    await db.query(
+      `
+      UPDATE jobs
+      SET status = 'waiting_review'
+      WHERE id = ?
+      `,
+      [jobId]
+    );
+
+    await db.query(
+      `
+      INSERT INTO job_status_updates (
+        job_id,
+        worker_user_id,
+        update_type,
+        message
+      ) VALUES (?, ?, 'waiting_review', ?)
+      `,
+      [jobId, worker_user_id, 'งานเสร็จแล้ว รอลูกค้ายืนยัน']
+    );
+
+    res.json({ message: 'เปลี่ยนสถานะเป็น waiting_review แล้ว' });
+  } catch (error) {
+    console.error('POST /jobs/:id/complete error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/jobs/:id/customer-confirm', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+
+    const [jobRows] = await db.query(
+      `SELECT * FROM jobs WHERE id = ? LIMIT 1`,
+      [jobId]
+    );
+
+    if (!jobRows.length) {
+      return res.status(404).json({ message: 'ไม่พบงาน' });
+    }
+
+    const job = jobRows[0];
+
+    await db.query(
+      `
+      UPDATE jobs
+      SET status = 'completed',
+          customer_confirmed_at = NOW()
+      WHERE id = ?
+      `,
+      [jobId]
+    );
+
+    if (job.assigned_worker_id) {
+      await db.query(
+        `
+        INSERT INTO job_status_updates (
+          job_id,
+          worker_user_id,
+          update_type,
+          message
+        ) VALUES (?, ?, 'completed', ?)
+        `,
+        [jobId, job.assigned_worker_id, 'ลูกค้ายืนยันงานแล้ว']
+      );
+    }
+
+    res.json({ message: 'ลูกค้ายืนยันงานแล้ว' });
+  } catch (error) {
+    console.error('POST /jobs/:id/customer-confirm error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/workers/:workerUserId/reviews', async (req, res) => {
+  try {
+    const workerUserId = req.params.workerUserId;
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        wr.id,
+        wr.job_id,
+        wr.worker_user_id,
+        wr.reviewer_user_id,
+        wr.rating,
+        wr.review_text,
+        wr.image_url,
+        wr.tip_amount,
+        wr.created_at,
+        j.title AS job_title,
+        u.full_name AS reviewer_name,
+        u.profile_image_url AS reviewer_img
+      FROM worker_reviews wr
+      INNER JOIN jobs j ON j.id = wr.job_id
+      INNER JOIN users u ON u.id = wr.reviewer_user_id
+      WHERE wr.worker_user_id = ?
+      ORDER BY wr.created_at DESC, wr.id DESC
+      `,
+      [workerUserId]
+    );
+
+    const [summaryRows] = await db.query(
+      `
+      SELECT
+        COUNT(*) AS review_count,
+        COALESCE(AVG(rating), 0) AS rating_avg
+      FROM worker_reviews
+      WHERE worker_user_id = ?
+      `,
+      [workerUserId]
+    );
+
+    res.json({
+      summary: {
+        worker_user_id: Number(workerUserId),
+        rating_avg: Number(summaryRows[0]?.rating_avg || 0),
+        review_count: Number(summaryRows[0]?.review_count || 0),
+      },
+      reviews: rows.map((r) => ({
+        id: Number(r.id),
+        job_id: Number(r.job_id),
+        worker_user_id: Number(r.worker_user_id),
+        reviewer_user_id: Number(r.reviewer_user_id),
+        rating: Number(r.rating || 0),
+        review_text: r.review_text ?? '',
+        image_url: r.image_url ?? '',
+        tip_amount: Number(r.tip_amount || 0),
+        created_at: r.created_at,
+        job_title: r.job_title ?? '',
+        reviewer_name: r.reviewer_name ?? '',
+        reviewer_img: r.reviewer_img ?? '',
+      })),
+    });
+  } catch (error) {
+    console.error('GET /workers/:workerUserId/reviews error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/jobs/:id/review', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const {
+      worker_user_id,
+      reviewer_user_id,
+      rating,
+      review_text,
+      image_url,
+      tip_amount,
+    } = req.body;
+
+    const [jobRows] = await db.query(
+      `SELECT * FROM jobs WHERE id = ? LIMIT 1`,
+      [jobId]
+    );
+
+    if (!jobRows.length) {
+      return res.status(404).json({ message: 'ไม่พบงาน' });
+    }
+
+    const [existingRows] = await db.query(
+      `
+      SELECT id
+      FROM worker_reviews
+      WHERE job_id = ? AND reviewer_user_id = ?
+      LIMIT 1
+      `,
+      [jobId, reviewer_user_id]
+    );
+
+    if (existingRows.length) {
+      return res.status(400).json({ message: 'งานนี้ถูกรีวิวแล้ว' });
+    }
+
+    const finalRating = Number(rating || 0);
+    if (finalRating < 1 || finalRating > 5) {
+      return res.status(400).json({ message: 'คะแนนต้องอยู่ระหว่าง 1 ถึง 5' });
+    }
+
+    const finalTip = Number(tip_amount || 0);
+
+    const [result] = await db.query(
+      `
+      INSERT INTO worker_reviews (
+        job_id,
+        worker_user_id,
+        reviewer_user_id,
+        rating,
+        review_text,
+        image_url,
+        tip_amount
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        jobId,
+        worker_user_id,
+        reviewer_user_id,
+        finalRating,
+        review_text || '',
+        image_url || '',
+        finalTip,
+      ]
+    );
+
+    const [avgRows] = await db.query(
+      `
+      SELECT
+        COUNT(*) AS review_count,
+        COALESCE(AVG(rating), 0) AS rating_avg
+      FROM worker_reviews
+      WHERE worker_user_id = ?
+      `,
+      [worker_user_id]
+    );
+
+    await db.query(
+      `
+      UPDATE users
+      SET rating_avg = ?, rating_count = ?
+      WHERE id = ?
+      `,
+      [
+        Number(avgRows[0].rating_avg || 0),
+        Number(avgRows[0].review_count || 0),
+        worker_user_id,
+      ]
+    );
+
+    await db.query(
+      `
+      UPDATE jobs
+      SET status = 'closed'
+      WHERE id = ?
+      `,
+      [jobId]
+    );
+
+    const [rows] = await db.query(
+      `
+      SELECT *
+      FROM worker_reviews
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [result.insertId]
+    );
+
+    res.status(201).json({
+      id: Number(rows[0].id),
+      job_id: Number(rows[0].job_id),
+      worker_user_id: Number(rows[0].worker_user_id),
+      reviewer_user_id: Number(rows[0].reviewer_user_id),
+      rating: Number(rows[0].rating || 0),
+      review_text: rows[0].review_text ?? '',
+      image_url: rows[0].image_url ?? '',
+      tip_amount: Number(rows[0].tip_amount || 0),
+      created_at: rows[0].created_at,
+      rating_avg: Number(avgRows[0].rating_avg || 0),
+      rating_count: Number(avgRows[0].review_count || 0),
+    });
+  } catch (error) {
+    console.error('POST /jobs/:id/review error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/workers/:workerUserId/profile', async (req, res) => {
+  try {
+    const workerUserId = req.params.workerUserId;
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        phone,
+        profile_image_url,
+        job_title,
+        bio,
+        skills,
+        rating_avg,
+        rating_count
+      FROM users
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [workerUserId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: 'ไม่พบข้อมูลช่าง' });
+    }
+
+    const worker = rows[0];
+
+    res.json({
+      id: Number(worker.id),
+      name: worker.full_name ?? '',
+      email: worker.email ?? '',
+      phone: worker.phone ?? '',
+      img: worker.profile_image_url ?? '',
+      job_title: worker.job_title ?? '',
+      desc: worker.bio ?? '',
+      skills: worker.skills ?? '',
+      rating_avg: Number(worker.rating_avg || 0),
+      rating_count: Number(worker.rating_count || 0),
+    });
+  } catch (error) {
+    console.error('GET /workers/:workerUserId/profile error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

@@ -47,6 +47,15 @@ class HomePageState extends State<HomePage> {
     });
   }
 
+  bool _shouldShowOnHome(JobItem job) {
+    final bool isHired = job.assignedWorkerId != null;
+    final bool isPaid = job.paymentStatus == 'paid';
+    final bool isClosed = job.status == 'closed';
+    final bool isPending = job.status == 'pending';
+
+    return !isHired && !isPaid && !isClosed && !isPending;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,7 +98,8 @@ class HomePageState extends State<HomePage> {
                   );
                 }
 
-                final jobList = snapshot.data ?? [];
+                final allJobs = snapshot.data ?? [];
+                final jobList = allJobs.where(_shouldShowOnHome).toList();
 
                 if (jobList.isEmpty) {
                   return _buildEmptyState();

@@ -387,7 +387,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => job.paymentStatus == 'paid'
-                              ? JobTrackingPage(job: job.toUiMap())
+                              ? JobAcceptedDetailPage(job: job)
                               : JobDetailPage(job: job),
                         ),
                       );

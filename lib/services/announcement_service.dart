@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AnnouncementService {
-  static const String baseUrl = 'https://pakin-mobile.app.chanakancloud.net/api/announcements';
+  static const String baseUrl = 'http://localhost:3000/api/announcements';
 
   static Future<Map<String, dynamic>> createAnnouncement({
     required String title,
