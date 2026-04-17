@@ -15,7 +15,17 @@ import 'pages/users_admin_page.dart';
 import 'pages/user_detail_page.dart';
 import 'pages/chat_list_admin_page.dart';
 import 'pages/chat_room_admin_page.dart';
-import 'pages/report_admin_page.dart';
+import 'pages/Report_admin_page.dart';
+import 'applicants_page.dart';
+import 'worker_profile_page.dart';
+import 'payment_page.dart';
+import 'job_detail_hiring_page.dart';
+import 'addjob_page.dart';
+import 'home_page.dart';
+import 'category_page.dart';
+import 'myjobs_page.dart';
+import 'chat_page.dart';
+import 'job_tracking_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -68,6 +78,11 @@ class MyApp extends StatelessWidget {
           return ChatRoomPage(conversation: conversation);
         },
         '/reports': (context) => const ReportPage(),
+        '/home': (context) => const HomePage(),
+        '/category': (context) => const CategoryPage(),
+        '/myjobs': (context) => const MyJobsPage(),
+        '/chat': (context) => const ChatPage(),
+        
       },
     );
   }

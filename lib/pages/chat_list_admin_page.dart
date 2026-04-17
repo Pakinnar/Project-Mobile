@@ -26,7 +26,7 @@ class ChatMessage {
 }
 
 class ChatConversation {
-  final String id;
+  final int id;
   final String userName;
   final String? avatarUrl;
   final String lastMessage;
@@ -83,12 +83,12 @@ class _ChatListPageState extends State<ChatListPage> {
 
       final chats = data.map<ChatConversation>((json) {
         return ChatConversation(
-          id: json['id'].toString(),
-          userName: json['user_name'] ?? '',
-          avatarUrl: json['avatar_url'],
-          lastMessage: json['last_message'] ?? '',
-          time: json['last_time'] ?? '',
-          priority: _mapPriority(json['priority']),
+          id: _toInt(json['id']),
+          userName: json['user_name']?.toString() ?? '',
+          avatarUrl: json['avatar_url']?.toString(),
+          lastMessage: json['last_message']?.toString() ?? '',
+          time: json['time_text']?.toString() ?? '',
+          priority: _mapPriority(json['priority']?.toString()),
           isOnline: json['is_online'] == true || json['is_online'] == 1,
           messages: const [],
         );
@@ -333,8 +333,10 @@ class _ChatListPageState extends State<ChatListPage> {
           radius: 28,
           backgroundColor: const Color(0xFFEEEEEE),
           backgroundImage:
-              chat.avatarUrl != null ? NetworkImage(chat.avatarUrl!) : null,
-          child: chat.avatarUrl == null
+              (chat.avatarUrl != null && chat.avatarUrl!.isNotEmpty)
+                  ? NetworkImage(chat.avatarUrl!)
+                  : null,
+          child: (chat.avatarUrl == null || chat.avatarUrl!.isEmpty)
               ? Text(
                   chat.userName.isNotEmpty ? chat.userName.characters.first : '?',
                   style: const TextStyle(
@@ -470,3 +472,9 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 }
 
+int _toInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString()) ?? 0;
+}

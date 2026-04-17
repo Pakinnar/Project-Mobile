@@ -8,28 +8,30 @@ const fs      = require('fs');
 const db      = require('../db');
 
 // ─────────────────────────────────────────────
-// MULTER — บันทึกรูปไว้ที่ uploads/profiles/
+// MULTER setup
+// ✅ แก้: ลบ duplicate destination ออก (bug เดิม)
 // ─────────────────────────────────────────────
 const uploadDir = path.join(__dirname, '..', 'uploads', 'profiles');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => cb(null, uploadDir),  // ✅ มีแค่อันเดียว
   filename:    (req, file, cb) => {
     const ext = path.extname(file.originalname) || '.jpg';
     cb(null, `user_${req.params.id}_${Date.now()}${ext}`);
   },
 });
+
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new Error('อนุญาตเฉพาะไฟล์รูปภาพเท่านั้น'));
   },
 });
 
-// ── helper: แปลง skills string → array ──────
+// ─── helpers ──────────────────────────────────
 function parseSkills(raw) {
   if (!raw) return [];
   try {
@@ -40,7 +42,6 @@ function parseSkills(raw) {
   }
 }
 
-// ── helper: format user row → response ───────
 function formatUser(u) {
   return {
     id:                Number(u.id),
@@ -48,9 +49,9 @@ function formatUser(u) {
     email:             u.email             ?? '',
     phone:             u.phone             ?? null,
     bio:               u.bio               ?? null,
-    job_title:         u.job_title         ?? null,   // ← column ใหม่ที่ migrate แล้ว
-    skills:            parseSkills(u.skills),          // ← column ใหม่
-    profile_image_url: u.profile_image_url ?? null,   // ← column ใหม่
+    job_title:         u.job_title         ?? null,
+    skills:            parseSkills(u.skills),
+    profile_image_url: u.profile_image_url ?? null,
     rating:            Number(u.rating)    || 0,
     total_jobs:        Number(u.total_jobs)|| 0,
     is_verified:       u.is_verified === 1 ? 1 : 0,
@@ -79,14 +80,13 @@ router.get('/users/:id/profile', async (req, res) => {
 
 // ─────────────────────────────────────────────
 // PUT /api/users/:id/profile  (multipart/form-data)
-// fields: full_name, email, phone, bio, job_title, skills (JSON string)
-// file:   profile_image (optional)
+// ✅ multer middleware อยู่ตรงนี้ ไม่ใช่ใน storage
 // ─────────────────────────────────────────────
 router.put('/users/:id/profile', upload.single('profile_image'), async (req, res) => {
   try {
     const { full_name, email, phone, bio, job_title, skills } = req.body;
 
-    // skills: Flutter ส่งมาเป็น JSON array string → เก็บเป็น comma-string
+    // skills: Flutter ส่ง JSON array string → เก็บเป็น comma-string ใน DB
     let skillsStr = null;
     if (skills !== undefined) {
       try {
@@ -97,27 +97,32 @@ router.put('/users/:id/profile', upload.single('profile_image'), async (req, res
       }
     }
 
-    // ถ้า upload รูปมาด้วย → สร้าง URL
-    let profileImageUrl = undefined; // undefined = ไม่ update column นี้
+    // ✅ ถ้า upload รูปมา สร้าง URL — ใช้ req.protocol + host หรือ hardcode
+    let profileImageUrl = undefined;
     if (req.file) {
-      profileImageUrl = `http://localhost:3000/uploads/profiles/${req.file.filename}`;
+      // ปรับ URL ตาม production จริง
+      const host = `${req.protocol}://${req.get('host')}`;
+      profileImageUrl = `${host}/uploads/profiles/${req.file.filename}`;
     }
 
-    // Build SET clause เฉพาะ field ที่ส่งมา
+    // Build dynamic SET clause
     const sets   = [];
     const params = [];
 
-    if (full_name        !== undefined) { sets.push('full_name = ?');         params.push(full_name); }
-    if (email            !== undefined) { sets.push('email = ?');             params.push(email); }
-    if (phone            !== undefined) { sets.push('phone = ?');             params.push(phone || null); }
-    if (bio              !== undefined) { sets.push('bio = ?');               params.push(bio || null); }
-    if (job_title        !== undefined) { sets.push('job_title = ?');         params.push(job_title || null); }
-    if (skillsStr        !== null)      { sets.push('skills = ?');            params.push(skillsStr); }
-    if (profileImageUrl  !== undefined) { sets.push('profile_image_url = ?'); params.push(profileImageUrl); }
-    sets.push('updated_at = NOW()');
-    params.push(req.params.id);
+    if (full_name       !== undefined) { sets.push('full_name = ?');         params.push(full_name); }
+    if (email           !== undefined) { sets.push('email = ?');             params.push(email); }
+    if (phone           !== undefined) { sets.push('phone = ?');             params.push(phone || null); }
+    if (bio             !== undefined) { sets.push('bio = ?');               params.push(bio || null); }
+    if (job_title       !== undefined) { sets.push('job_title = ?');         params.push(job_title || null); }
+    if (skillsStr       !== null)      { sets.push('skills = ?');            params.push(skillsStr); }
+    if (profileImageUrl !== undefined) { sets.push('profile_image_url = ?'); params.push(profileImageUrl); }
 
-    await db.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params);
+    // ✅ ถ้าไม่มีอะไรให้ update เลย ก็ไม่ต้อง query
+    if (sets.length > 0) {
+      sets.push('updated_at = NOW()');
+      params.push(req.params.id);
+      await db.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params);
+    }
 
     // Return updated profile
     const [rows] = await db.query(
@@ -136,7 +141,6 @@ router.put('/users/:id/profile', upload.single('profile_image'), async (req, res
 
 // ─────────────────────────────────────────────
 // GET /api/users/:id/portfolios
-// portfolios มี user_id หลัง migrate แล้ว
 // ─────────────────────────────────────────────
 router.get('/users/:id/portfolios', async (req, res) => {
   try {
@@ -156,13 +160,11 @@ router.get('/users/:id/portfolios', async (req, res) => {
 
 // ─────────────────────────────────────────────
 // GET /api/users/:id/earnings
-// earnings มี user_id, title, description, work_date, status หลัง migrate
 // ─────────────────────────────────────────────
 router.get('/users/:id/earnings', async (req, res) => {
   try {
     const userId = req.params.id;
 
-    // รายได้เดือนนี้
     const [[monthRow]] = await db.query(
       `SELECT COALESCE(SUM(amount), 0) AS total_month
        FROM earnings
@@ -172,7 +174,6 @@ router.get('/users/:id/earnings', async (req, res) => {
       [userId]
     );
 
-    // รายได้เดือนที่แล้ว
     const [[prevRow]] = await db.query(
       `SELECT COALESCE(SUM(amount), 0) AS previous_month
        FROM earnings
@@ -182,7 +183,6 @@ router.get('/users/:id/earnings', async (req, res) => {
       [userId]
     );
 
-    // ยอดที่ถอนได้ (status = 'paid')
     const [[balanceRow]] = await db.query(
       `SELECT COALESCE(SUM(amount), 0) AS available_balance
        FROM earnings
@@ -190,7 +190,6 @@ router.get('/users/:id/earnings', async (req, res) => {
       [userId]
     );
 
-    // รายการล่าสุด 10 รายการ
     const [recentItems] = await db.query(
       `SELECT id, user_id, amount, title, description, work_date, status
        FROM earnings

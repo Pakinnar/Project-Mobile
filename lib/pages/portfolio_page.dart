@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/profile_api_service.dart';
+import '../services/auth_service.dart';
 
 class PortfolioPage extends StatefulWidget {
   const PortfolioPage({super.key});
@@ -15,8 +16,13 @@ class _PortfolioPageState extends State<PortfolioPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    userId = (ModalRoute.of(context)?.settings.arguments as int?) ?? 3;
-    _future = ProfileApiService.getPortfolios(userId);
+    _future = _loadPortfolios();
+  }
+
+  Future<List<PortfolioItem>> _loadPortfolios() async {
+    final routeUserId = ModalRoute.of(context)?.settings.arguments as int?;
+    userId = routeUserId ?? await AuthService.getCurrentUserId();
+    return ProfileApiService.getPortfolios(userId);
   }
 
   @override

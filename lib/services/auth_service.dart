@@ -7,7 +7,7 @@ class AuthService {
   // Chrome ใช้ localhost
   static const String baseUrl = 'http://localhost:3000/api/auth';
   // ถ้าใช้ Android emulator:
-  // static const String baseUrl = '[10.0.2.2](http://10.0.2.2:3000/api/auth)';
+  // static const String baseUrl = 'http://10.0.2.2:3000/api/auth';
 
   static Future<Map<String, dynamic>> register({
     required String fullName,
@@ -34,6 +34,7 @@ class AuthService {
       await prefs.setString('role', data['user']['role']);
       await prefs.setString('full_name', data['user']['full_name']);
       await prefs.setString('email', data['user']['email']);
+      await prefs.setInt('user_id', data['user']['id']);
       return data;
     } else {
       throw Exception(data['message'] ?? 'สมัครสมาชิกไม่สำเร็จ');
@@ -63,6 +64,7 @@ class AuthService {
       await prefs.setString('role', data['user']['role']);
       await prefs.setString('full_name', data['user']['full_name']);
       await prefs.setString('email', data['user']['email']);
+      await prefs.setInt('user_id', data['user']['id']);
       return data;
     } else {
       throw Exception(data['message'] ?? 'เข้าสู่ระบบไม่สำเร็จ');
@@ -88,6 +90,32 @@ class AuthService {
     } else {
       throw Exception(data['message'] ?? 'โหลดข้อมูลผู้ใช้ไม่สำเร็จ');
     }
+  }
+
+  static Future<int?> getStoredUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('user_id');
+  }
+
+  static Future<int> getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedUserId = prefs.getInt('user_id');
+
+    if (storedUserId != null) {
+      return storedUserId;
+    }
+
+    final me = await getMe();
+    final dynamic userId = me['user']?['id'];
+    final int resolvedUserId =
+        userId is int ? userId : int.tryParse(userId?.toString() ?? '') ?? 0;
+
+    if (resolvedUserId <= 0) {
+      throw Exception('ไม่พบรหัสผู้ใช้ที่ล็อกอิน');
+    }
+
+    await prefs.setInt('user_id', resolvedUserId);
+    return resolvedUserId;
   }
 
   static Future<void> logout() async {

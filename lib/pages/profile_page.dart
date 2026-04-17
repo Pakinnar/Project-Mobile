@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/profile_api_service.dart';
+import '../services/auth_service.dart';
+import '../home_page.dart';
+import '../category_page.dart';
+import '../myjobs_page.dart';
+import '../chat_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -11,10 +16,6 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late Future<UserProfile> _profileFuture;
 
-  // ตอนนี้ fix userId ไว้ก่อน
-  // ภายหลังค่อยเปลี่ยนเป็นดึงจาก login/session
-  final int userId = 3;
-
   @override
   void initState() {
     super.initState();
@@ -22,7 +23,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _loadProfile() {
-    _profileFuture = ProfileApiService.getProfile(userId);
+    _profileFuture = AuthService.getCurrentUserId().then(
+      (userId) => ProfileApiService.getProfile(userId),
+    );
   }
 
   Future<void> _refreshProfile() async {
@@ -91,8 +94,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final String? imageUrl = profile.profileImageUrl;
     final ImageProvider imageProvider =
         (imageUrl != null && imageUrl.isNotEmpty)
-            ? NetworkImage(imageUrl)
-            : const AssetImage('assets/alex_rivera.jpg');
+        ? NetworkImage(imageUrl)
+        : const AssetImage('assets/alex_rivera.jpg');
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -126,7 +129,7 @@ class _ProfilePageState extends State<ProfilePage> {
         Text(
           (profile.jobTitle != null && profile.jobTitle!.isNotEmpty)
               ? profile.jobTitle!
-              : "ช่างไฟฟ้าผู้เชี่ยวชาญและช่างซ่อมทั่วไป",
+              : "",
           style: const TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 8),
@@ -152,7 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 final result = await Navigator.pushNamed(
                   context,
                   '/edit-profile',
-                  arguments: userId,
+                  arguments: profile.id,
                 );
 
                 if (result == true) {
@@ -199,8 +202,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final bio = (profile.bio != null && profile.bio!.trim().isNotEmpty)
         ? profile.bio!
         : "มีประสบการณ์มากกว่า 10 ปีในงานไฟฟ้าและงานซ่อมแซมบ้านทั่วไป "
-            "ฉันมุ่งมั่นใจในฝีมือที่มีคุณภาพและการบริการที่เชื่อถือได้ "
-            "มีใบอนุญาตและประกันครบถ้วน เชี่ยวชาญในการติดตั้งระบบสมาร์ทโฮม";
+              "ฉันมุ่งมั่นใจในฝีมือที่มีคุณภาพและการบริการที่เชื่อถือได้ "
+              "มีใบอนุญาตและประกันครบถ้วน เชี่ยวชาญในการติดตั้งระบบสมาร์ทโฮม";
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -222,10 +225,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            bio,
-            style: const TextStyle(color: Colors.black87, height: 1.4),
-          ),
+          Text(bio, style: const TextStyle(color: Colors.black87, height: 1.4)),
           if (profile.skills.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
@@ -426,34 +426,94 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: Colors.green,
-      unselectedItemColor: Colors.grey,
-      currentIndex: 4,
-      onTap: (index) {},
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: "หน้าหลัก",
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _navItem(
+            Icons.home_filled,
+            'หน้าหลัก',
+            false,
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomePage()),
+              );
+            },
+          ),
+          _navItem(
+            Icons.grid_view_outlined,
+            'หมวดหมู่',
+            false,
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const CategoryPage()),
+              );
+            },
+          ),
+          _navItem(
+            Icons.assignment_outlined,
+            'งานของฉัน',
+            false,
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const MyJobsPage()),
+              );
+            },
+          ),
+          _navItem(
+            Icons.chat_bubble_outline,
+            'ข้อความ',
+            false,
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const ChatPage()),
+              );
+            },
+          ),
+          _navItem(Icons.person_outline, 'โปรไฟล์', true, onTap: () {}),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem(
+    IconData icon,
+    String label,
+    bool isSelected, {
+    VoidCallback? onTap,
+  }) {
+    final Color color = isSelected
+        ? const Color(0xFF00E676)
+        : const Color(0xFF94A3B8);
+    return InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        width: 65,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: color,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.category_outlined),
-          label: "หมวดหมู่",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          label: "งานของฉัน",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.chat_bubble_outline),
-          label: "ข้อความ",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          label: "โปรไฟล์",
-        ),
-      ],
+      ),
     );
   }
 }

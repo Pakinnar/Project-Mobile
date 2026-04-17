@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'chat_list_admin_page.dart';
 import '../services/chat_service.dart';
+import '../services/auth_service.dart';
+import 'dart:convert';
 
 class ChatRoomPage extends StatefulWidget {
   final ChatConversation conversation;
@@ -19,7 +21,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  List<ChatMessage> _messages = [];
+  List<AdminChatMessage> _messages = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -46,14 +48,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     try {
       final data = await ChatService.getMessages(widget.conversation.id);
 
-      final msgs = (data['messages'] as List).map<ChatMessage>((json) {
+      final msgs = data.map<AdminChatMessage>((json) {
         final createdAt = json['created_at']?.toString() ?? '';
-        final time = createdAt.length >= 16 ? createdAt.substring(11, 16) : '';
+        final fallbackTime =
+            createdAt.length >= 16 ? createdAt.substring(11, 16) : '';
 
-        return ChatMessage(
-          text: json['text'] ?? '',
+        return AdminChatMessage(
+          text: json['text']?.toString() ?? '',
           isAdmin: json['is_admin'] == true || json['is_admin'] == 1,
-          time: time,
+          time: (json['time_text']?.toString().isNotEmpty == true)
+              ? json['time_text'].toString()
+              : fallbackTime,
           isRead: json['is_read'] == true || json['is_read'] == 1,
         );
       }).toList();
@@ -98,9 +103,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }
@@ -252,7 +255,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage msg) {
+  Widget _buildMessageBubble(AdminChatMessage msg) {
     final isAdmin = msg.isAdmin;
 
     return Padding(
@@ -579,4 +582,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       onTap: () => Navigator.pop(context),
     );
   }
+}
+
+class AdminChatMessage {
+  final String text;
+  final bool isAdmin;
+  final String time;
+  final bool isRead;
+
+  AdminChatMessage({
+    required this.text,
+    required this.isAdmin,
+    required this.time,
+    required this.isRead,
+  });
 }

@@ -191,7 +191,7 @@ class _LoginPageState extends State<LoginPage> {
 
                                 Navigator.pushReplacementNamed(
                                   context,
-                                  '/profile',
+                                  '/home',
                                 );
                               } catch (e) {
                                 if (!context.mounted) return;

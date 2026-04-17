@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/profile_api_service.dart';
+import '../services/auth_service.dart';
 
 class EarningsPage extends StatefulWidget {
   const EarningsPage({super.key});
@@ -9,14 +10,12 @@ class EarningsPage extends StatefulWidget {
 }
 
 class _EarningsPageState extends State<EarningsPage> {
-  // userId — ในอนาคตเปลี่ยนเป็นดึงจาก session/auth
-  final int userId = 3;
   late Future<EarningsSummary> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = ProfileApiService.getEarnings(userId);
+    _future = AuthService.getCurrentUserId().then((userId) => ProfileApiService.getEarnings(userId));
   }
 
   @override
@@ -54,7 +53,7 @@ class _EarningsPageState extends State<EarningsPage> {
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () => setState(() {
-                    _future = ProfileApiService.getEarnings(userId);
+                    _future = AuthService.getCurrentUserId().then((userId) => ProfileApiService.getEarnings(userId));
                   }),
                   child: const Text('ลองใหม่'),
                 ),

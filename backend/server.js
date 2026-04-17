@@ -40,4 +40,11 @@ app.use('/api/chat', chatRoutes);
 const profilePageRoutes = require('./routes/profile_page');
 app.use('/api', profilePageRoutes);
 
+const chatUserRoutes = require('./routes/chatuser');
+app.use('/api/user-chat', chatUserRoutes);
 
+const jobRoutes = require('./routes/jobs');
+app.use('/api', jobRoutes);
+
+const agoraRoutes = require('./routes/agora');
+app.use('/api', agoraRoutes);
