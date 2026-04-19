@@ -35,9 +35,12 @@ cd flutter_app_fixed
 🔹 2. ติดตั้ง Backend
 cd backend
 npm install
+
 ถ้ามี error เช่น multer not found ให้รัน:
+
 npm install multer
 🔹 3. ตั้งค่า .env
+
 สร้างไฟล์ .env ในโฟลเดอร์ backend
 
 DB_HOST=localhost
@@ -49,30 +52,50 @@ JWT_SECRET=your_secret_key
 PORT=3000
 🔹 4. รัน Backend
 node server.js
+
 หรือ
+
 npx nodemon server.js
+
 ถ้าสำเร็จจะขึ้น:
+
 Server running on port 3000
 🔹 5. รัน Flutter
 cd ..
 flutter pub get
 flutter run
 📡 การเชื่อมต่อมือถือ
+
 ⚠️ สำคัญมาก
+
 ถ้ารันบนมือถือ ห้ามใช้ localhost
-ให้ใช้ IP ของเครื่องแทน เช่น: http://192.168.1.162:3000
+
+ให้ใช้ IP ของเครื่องแทน เช่น:
+
+http://192.168.1.162:3000
+
 มือถือกับคอมต้องอยู่ WiFi เดียวกัน
+
 🖼 การแสดงรูปภาพ
+
 รูปถูกเก็บใน:
+
 /backend/uploads/
+
 Backend เปิดใช้งานด้วย:
+
 app.use('/uploads', express.static('uploads'));
-ตัวอย่าง URL รูป: http://192.168.1.162:3000/uploads/jobs/image.jpg
+
+ตัวอย่าง URL รูป:
+
+http://192.168.1.162:3000/uploads/jobs/image.jpg
 💰 ระบบรายได้และถอนเงิน
 คำนวณจากตาราง earnings
 ถอนเงินผ่าน API:
 POST /api/users/:id/withdraw
+
 ตัวอย่าง response:
+
 {
   "message": "ถอนเงินสำเร็จ",
   "withdrawal": {
@@ -93,10 +116,18 @@ call_job_{jobId}_{userId}
 ใช้ localhost แทน IP
 URL เป็น https แต่ server เป็น http
 ❌ Login ไม่ได้ (Handshake error)
-แก้จาก: https://192.168.x.x
-เป็น: http://192.168.x.x
+
+แก้จาก:
+
+https://192.168.x.x
+
+เป็น:
+
+http://192.168.x.x
 ❌ Server รันไม่ได้
+
 ติดตั้ง dependency:
+
 npm install
 ❌ Flutter ไม่เจอมือถือ
 flutter devices
@@ -119,5 +150,10 @@ Pakin Narkjaroen
 Natsaran Pommachot
 
 📌 หมายเหตุ
+
 โปรเจกต์นี้ใช้เพื่อการศึกษา
-สามารถพัฒนาเพิ่มเติมได้ เช่น: ระบบแจ้งเตือน ,ระบบจ่ายเงินจริง, ระบบรีวิวขั้นสูง
+สามารถพัฒนาเพิ่มเติมได้ เช่น:
+
+ระบบแจ้งเตือน
+ระบบจ่ายเงินจริง
+ระบบรีวิวขั้นสูง
