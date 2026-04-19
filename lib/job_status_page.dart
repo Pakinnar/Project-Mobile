@@ -64,10 +64,32 @@ class _JobStatusPageState extends State<JobStatusPage> {
     } catch (e) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ยกเลิกงานไม่สำเร็จ: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ยกเลิกงานไม่สำเร็จ: $e')));
     }
+  }
+
+  String _normalizeImageUrl(String? imgPath) {
+    if (imgPath == null || imgPath.trim().isEmpty) {
+      return 'https://picsum.photos/id/119/600/300';
+    }
+
+    final raw = imgPath.trim();
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+
+    if (raw.startsWith('/uploads/')) {
+      return 'http://localhost:3000$raw';
+    }
+
+    if (raw.startsWith('uploads/')) {
+      return 'http://localhost:3000/$raw';
+    }
+
+    return 'https://picsum.photos/id/119/600/300';
   }
 
   @override
@@ -105,7 +127,10 @@ class _JobStatusPageState extends State<JobStatusPage> {
             ),
             title: const Text(
               'รายละเอียดงาน',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             actions: [
               IconButton(
@@ -120,9 +145,7 @@ class _JobStatusPageState extends State<JobStatusPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Image.network(
-                  uiJob['img'] != null && uiJob['img']!.isNotEmpty
-                      ? uiJob['img']!
-                      : 'https://picsum.photos/id/119/600/300',
+                  _normalizeImageUrl(uiJob['img']?.toString()),
                   width: double.infinity,
                   height: 250,
                   fit: BoxFit.cover,
@@ -153,7 +176,10 @@ class _JobStatusPageState extends State<JobStatusPage> {
                       const SizedBox(height: 30),
                       const Text(
                         'รายละเอียดงาน',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Text(
@@ -188,7 +214,10 @@ class _JobStatusPageState extends State<JobStatusPage> {
             Expanded(
               child: Text(
                 job['title'] ?? 'ไม่มีชื่อประกาศ',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             _badge(
@@ -284,8 +313,14 @@ class _JobStatusPageState extends State<JobStatusPage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-            Text(sub, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            Text(
+              sub,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ],
@@ -295,10 +330,17 @@ class _JobStatusPageState extends State<JobStatusPage> {
   Widget _badge(String text, Color bg, Color textCol) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Text(
         text,
-        style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: textCol,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

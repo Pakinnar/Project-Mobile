@@ -17,6 +17,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late Future<UserProfile> _profileFuture;
   Future<WorkerReviewsResponse>? _reviewsFuture;
+  Future<List<PortfolioItem>>? _portfoliosFuture;
   int? _currentUserId;
 
   @override
@@ -29,14 +30,90 @@ class _ProfilePageState extends State<ProfilePage> {
     _profileFuture = AuthService.getCurrentUserId().then((userId) {
       _currentUserId = userId;
       _reviewsFuture = JobApiService.getWorkerReviews(userId);
+      _portfoliosFuture = ProfileApiService.getPortfolios(userId);
       return ProfileApiService.getProfile(userId);
     });
   }
 
   Future<void> _refreshProfile() async {
-    setState(() {
-      _loadProfile();
-    });
+    setState(() => _loadProfile());
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.logout_rounded, color: Color(0xFFEF5350), size: 22),
+            SizedBox(width: 8),
+            Text(
+              'ออกจากระบบ',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+          ],
+        ),
+        content: const Text(
+          'คุณต้องการออกจากระบบใช่ไหม?\nคุณจะต้องเข้าสู่ระบบใหม่เพื่อใช้งาน',
+          style: TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF555555)),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    side: const BorderSide(color: Color(0xFFE0E0E0)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'ยกเลิก',
+                    style: TextStyle(color: Color(0xFF757575)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await AuthService.logout();
+                    if (!mounted) return;
+                    Navigator.of(context)
+                        .pushNamedAndRemoveUntil('/login', (_) => false);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF5350),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'ออกจากระบบ',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openPortfolioPage(BuildContext context) {
+    Navigator.pushNamed(context, '/portfolio');
   }
 
   @override
@@ -45,13 +122,21 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
-          "โปรไฟล์ของฉัน",
+          'โปรไฟล์ของฉัน',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            onPressed: _showLogoutDialog,
+            icon: const Icon(Icons.logout_rounded),
+            color: const Color(0xFFEF5350),
+            tooltip: 'ออกจากระบบ',
+          ),
+        ],
       ),
       body: FutureBuilder<UserProfile>(
         future: _profileFuture,
@@ -86,12 +171,45 @@ class _ProfilePageState extends State<ProfilePage> {
                 _buildPortfolioSection(context),
                 const SizedBox(height: 24),
                 _buildReviewSection(context),
+                const SizedBox(height: 24),
+                _buildLogoutButton(),
+                const SizedBox(height: 24),
               ],
             ),
           );
         },
       ),
       bottomNavigationBar: _buildBottomNavBar(),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _showLogoutDialog,
+        icon: const Icon(
+          Icons.logout_rounded,
+          color: Color(0xFFEF5350),
+          size: 20,
+        ),
+        label: const Text(
+          'ออกจากระบบ',
+          style: TextStyle(
+            color: Color(0xFFEF5350),
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
+          backgroundColor: const Color(0xFFFFF5F5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
     );
   }
 
@@ -144,15 +262,11 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 8),
             Text(
-              profile.fullName.isNotEmpty ? profile.fullName : "Alex Rivera",
+              profile.fullName.isNotEmpty ? profile.fullName : 'Alex Rivera',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            Text(
-              (profile.jobTitle != null && profile.jobTitle!.isNotEmpty)
-                  ? profile.jobTitle!
-                  : "",
-              style: const TextStyle(color: Colors.grey),
-            ),
+            if (profile.jobTitle?.isNotEmpty == true)
+              Text(profile.jobTitle!, style: const TextStyle(color: Colors.grey)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -162,7 +276,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text(ratingAvg.toStringAsFixed(1)),
                 const SizedBox(width: 8),
                 Text(
-                  "($reviewCount รีวิว)",
+                  '($reviewCount รีวิว)',
                   style: const TextStyle(color: Colors.grey),
                 ),
               ],
@@ -178,36 +292,25 @@ class _ProfilePageState extends State<ProfilePage> {
                       '/edit-profile',
                       arguments: profile.id,
                     );
-
-                    if (result == true) {
-                      await _refreshProfile();
-                    }
+                    if (result == true) await _refreshProfile();
                   },
-                  icon: const Icon(Icons.edit, color: Colors.white),
-                  label: const Text("แก้ไขโปรไฟล์"),
+                  icon: const Icon(Icons.edit, color: Colors.white, size: 18),
+                  label: const Text('แก้ไขโปรไฟล์'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/earnings');
-                  },
-                  icon: const Icon(Icons.account_balance_wallet_outlined),
-                  label: const Text("ดูรายได้"),
+                  onPressed: () => Navigator.pushNamed(context, '/earnings'),
+                  icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+                  label: const Text('ดูรายได้'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -224,9 +327,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildAboutSection(UserProfile profile) {
     final bio = (profile.bio != null && profile.bio!.trim().isNotEmpty)
         ? profile.bio!
-        : "มีประสบการณ์มากกว่า 10 ปีในงานไฟฟ้าและงานซ่อมแซมบ้านทั่วไป "
-            "ฉันมุ่งมั่นใจในฝีมือที่มีคุณภาพและการบริการที่เชื่อถือได้ "
-            "มีใบอนุญาตและประกันครบถ้วน เชี่ยวชาญในการติดตั้งระบบสมาร์ทโฮม";
+        : 'มีประสบการณ์มากกว่า 10 ปีในงานไฟฟ้าและงานซ่อมแซมบ้านทั่วไป';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -242,36 +343,39 @@ class _ProfilePageState extends State<ProfilePage> {
               Icon(Icons.person_outline, color: Colors.green),
               SizedBox(width: 8),
               Text(
-                "เกี่ยวกับฉัน",
+                'เกี่ยวกับฉัน',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(bio, style: const TextStyle(color: Colors.black87, height: 1.4)),
+          Text(
+            bio,
+            style: const TextStyle(color: Colors.black87, height: 1.4),
+          ),
           if (profile.skills.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: profile.skills.map((skill) {
-                return Chip(
-                  label: Text(skill),
-                  backgroundColor: const Color(0xFFEFFAF1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: const BorderSide(color: Color(0xFFD7F5DF)),
-                  ),
-                );
-              }).toList(),
+              children: profile.skills
+                  .map(
+                    (skill) => Chip(
+                      label: Text(skill),
+                      backgroundColor: const Color(0xFFEFFAF1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: Color(0xFFD7F5DF)),
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
           const SizedBox(height: 12),
-          Text(
-            "เบอร์โทร: ${(profile.phone != null && profile.phone!.isNotEmpty) ? profile.phone! : '-'}",
-          ),
+          Text('เบอร์โทร: ${(profile.phone?.isNotEmpty == true) ? profile.phone! : '-'}'),
           const SizedBox(height: 4),
-          Text("อีเมล: ${profile.email}"),
+          Text('อีเมล: ${profile.email}'),
         ],
       ),
     );
@@ -286,86 +390,145 @@ class _ProfilePageState extends State<ProfilePage> {
             const Icon(Icons.photo_library_outlined, color: Colors.green),
             const SizedBox(width: 8),
             const Text(
-              "ผลงานของฉัน",
+              'ผลงานของฉัน',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const Spacer(),
             TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/portfolio');
-              },
-              child: const Text("ดูผลงาน →"),
+              onPressed: () => _openPortfolioPage(context),
+              child: const Text('ดูผลงาน →'),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            _buildImage(context, 'assets/work1.jpg'),
-            _buildImage(context, 'assets/work2.jpg'),
-            _buildImage(context, 'assets/work3.jpg'),
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/portfolio');
-              },
-              child: Container(
-                alignment: Alignment.center,
+        FutureBuilder<List<PortfolioItem>>(
+          future: _portfoliosFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.photo_library_outlined,
-                      color: Color(0xFF64748B),
-                      size: 28,
+                child: Text('โหลดผลงานไม่สำเร็จ\n${snapshot.error}'),
+              );
+            }
+
+            final items = snapshot.data ?? [];
+
+            if (items.isEmpty) {
+              return GestureDetector(
+                onTap: () => _openPortfolioPage(context),
+                child: Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'ยังไม่มีผลงาน\nกดเพื่อไปหน้าอัปโหลดผลงาน',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      "+12 เพิ่มเติม",
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF64748B),
+                  ),
+                ),
+              );
+            }
+
+            final bool hasMoreThan3 = items.length > 3;
+            final List<PortfolioItem> visibleItems =
+                hasMoreThan3 ? items.take(3).toList() : items.take(4).toList();
+            final int remainingCount = items.length - 3;
+
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: hasMoreThan3 ? 4 : visibleItems.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemBuilder: (context, index) {
+                if (hasMoreThan3 && index == 3) {
+                  return GestureDetector(
+                    onTap: () => _openPortfolioPage(context),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.photo_library_outlined,
+                              color: Color(0xFF64748B),
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '+$remainingCount เพิ่มเติม',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+                  );
+                }
 
-  Widget _buildImage(BuildContext context, String path) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(context, '/portfolio');
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.asset(
-          path,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: const Color(0xFFF1F5F9),
-              child: const Center(
-                child: Icon(Icons.image_outlined, color: Color(0xFF94A3B8)),
-              ),
+                final item = visibleItems[index];
+                final imageUrl = item.imageUrl ?? '';
+
+                return GestureDetector(
+                  onTap: () => _openPortfolioPage(context),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFFF1F5F9),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: const Color(0xFFF1F5F9),
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                  ),
+                );
+              },
             );
           },
         ),
-      ),
+      ],
     );
   }
 
@@ -374,28 +537,9 @@ class _ProfilePageState extends State<ProfilePage> {
       future: _reviewsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.star_border, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text(
-                    "รีวิว",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              Center(child: CircularProgressIndicator()),
-            ],
-          );
+          return const Center(child: CircularProgressIndicator());
         }
-
-        if (snapshot.hasError) {
-          return const SizedBox.shrink();
-        }
+        if (snapshot.hasError) return const SizedBox.shrink();
 
         final data = snapshot.data;
         final reviews = data?.reviews ?? [];
@@ -410,7 +554,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 const Icon(Icons.star_border, color: Colors.green),
                 const SizedBox(width: 8),
                 const Text(
-                  "รีวิว",
+                  'รีวิว',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const Spacer(),
@@ -435,24 +579,20 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               )
             else ...[
-              ...reviews.take(2).map((review) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildReviewItem(
-                    review.reviewerName.isNotEmpty
-                        ? review.reviewerName
-                        : 'ผู้ใช้งาน',
-                    review.rating.toStringAsFixed(1),
-                    review.createdAt,
-                    review.reviewText.isNotEmpty ? review.reviewText : '-',
-                    reviewerImg: review.reviewerImg,
+              ...reviews.take(2).map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildReviewItem(
+                        r.reviewerName.isNotEmpty ? r.reviewerName : 'ผู้ใช้งาน',
+                        r.rating.toStringAsFixed(1),
+                        r.createdAt,
+                        r.reviewText.isNotEmpty ? r.reviewText : '-',
+                        reviewerImg: r.reviewerImg,
+                      ),
+                    ),
                   ),
-                );
-              }),
               TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/reviews');
-                },
+                onPressed: () => Navigator.pushNamed(context, '/reviews'),
                 child: Center(
                   child: Text('ดูรีวิวทั้งหมด $reviewCount รายการ'),
                 ),
@@ -481,8 +621,7 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            backgroundImage:
-                reviewerImg.isNotEmpty ? NetworkImage(reviewerImg) : null,
+            backgroundImage: reviewerImg.isNotEmpty ? NetworkImage(reviewerImg) : null,
             backgroundColor: const Color(0xFFE8F5E9),
             radius: 20,
             child: reviewerImg.isEmpty
@@ -502,10 +641,7 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
                     const Spacer(),
                     const Icon(Icons.star, color: Colors.amber, size: 18),
                     Text(rating),
@@ -539,45 +675,37 @@ class _ProfilePageState extends State<ProfilePage> {
             Icons.home_filled,
             'หน้าหลัก',
             false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomePage()),
-              );
-            },
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomePage()),
+            ),
           ),
           _navItem(
             Icons.grid_view_outlined,
             'หมวดหมู่',
             false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const CategoryPage()),
-              );
-            },
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const CategoryPage()),
+            ),
           ),
           _navItem(
             Icons.assignment_outlined,
             'งานของฉัน',
             false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MyJobsPage()),
-              );
-            },
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const MyJobsPage()),
+            ),
           ),
           _navItem(
             Icons.chat_bubble_outline,
             'ข้อความ',
             false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const ChatPage()),
-              );
-            },
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ChatPage()),
+            ),
           ),
           _navItem(Icons.person_outline, 'โปรไฟล์', true, onTap: () {}),
         ],
@@ -591,9 +719,9 @@ class _ProfilePageState extends State<ProfilePage> {
     bool isSelected, {
     VoidCallback? onTap,
   }) {
-    final Color color = isSelected
-        ? const Color(0xFF00E676)
-        : const Color(0xFF94A3B8);
+    final color =
+        isSelected ? const Color(0xFF00E676) : const Color(0xFF94A3B8);
+
     return InkWell(
       onTap: onTap,
       child: SizedBox(

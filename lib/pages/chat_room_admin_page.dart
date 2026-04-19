@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'chat_list_admin_page.dart';
-import '../services/chat_service.dart';
-import '../services/auth_service.dart';
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'chat_list_admin_page.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final ChatConversation conversation;
@@ -46,25 +46,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     });
 
     try {
-      final data = await ChatService.getMessages(widget.conversation.id);
-
-      final msgs = data.map<AdminChatMessage>((json) {
-        final createdAt = json['created_at']?.toString() ?? '';
-        final fallbackTime =
-            createdAt.length >= 16 ? createdAt.substring(11, 16) : '';
-
-        return AdminChatMessage(
-          text: json['text']?.toString() ?? '',
-          isAdmin: json['is_admin'] == true || json['is_admin'] == 1,
-          time: (json['time_text']?.toString().isNotEmpty == true)
-              ? json['time_text'].toString()
-              : fallbackTime,
-          isRead: json['is_read'] == true || json['is_read'] == 1,
-        );
-      }).toList();
+      final data = await AdminRoomApi.getMessages(widget.conversation.id);
 
       setState(() {
-        _messages = msgs;
+        _messages = data;
         _isLoading = false;
       });
 
@@ -92,10 +77,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     if (text.isEmpty) return;
 
     try {
-      await ChatService.sendMessage(
+      await AdminRoomApi.sendMessage(
         conversationId: widget.conversation.id,
         text: text,
-        isAdmin: true,
       );
 
       _textController.clear();
@@ -194,7 +178,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Text(
-                  'แชทแจ้งปัญหา',
+                  'แชท',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -202,29 +186,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   ),
                 ),
                 Text(
-                  'สนทนากับ คุณ${widget.conversation.userName.split(' ').first}',
+                  'สนทนากับ ${widget.conversation.userName}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF9E9E9E),
                   ),
                 ),
               ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => _showMoreOptions(context),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F7FA),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.more_vert,
-                size: 20,
-                color: Color(0xFF555555),
-              ),
             ),
           ),
         ],
@@ -256,26 +224,26 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   Widget _buildMessageBubble(AdminChatMessage msg) {
-    final isAdmin = msg.isAdmin;
+    final isMe = msg.isMe;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment:
-            isAdmin ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          if (!isAdmin)
+          if (!isMe)
             Padding(
               padding: const EdgeInsets.only(left: 50, bottom: 4),
               child: Text(
-                'คุณ${widget.conversation.userName.split(' ').first}',
+                widget.conversation.userName,
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF9E9E9E),
                 ),
               ),
             ),
-          if (isAdmin)
+          if (isMe)
             const Padding(
               padding: EdgeInsets.only(right: 50, bottom: 4),
               child: Text(
@@ -288,10 +256,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             ),
           Row(
             mainAxisAlignment:
-                isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
+                isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!isAdmin) ...[
+              if (!isMe) ...[
                 _buildMiniAvatar(),
                 const SizedBox(width: 8),
               ],
@@ -305,12 +273,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: isAdmin ? _green : Colors.white,
+                    color: isMe ? _green : Colors.white,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
-                      bottomLeft: Radius.circular(isAdmin ? 18 : 4),
-                      bottomRight: Radius.circular(isAdmin ? 4 : 18),
+                      bottomLeft: Radius.circular(isMe ? 18 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 18),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -325,13 +293,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     style: TextStyle(
                       fontSize: 14,
                       height: 1.55,
-                      color:
-                          isAdmin ? Colors.white : const Color(0xFF1A1A2E),
+                      color: isMe ? Colors.white : const Color(0xFF1A1A2E),
                     ),
                   ),
                 ),
               ),
-              if (isAdmin) ...[
+              if (isMe) ...[
                 const SizedBox(width: 8),
                 _buildAdminAvatar(),
               ],
@@ -340,26 +307,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           Padding(
             padding: EdgeInsets.only(
               top: 5,
-              left: isAdmin ? 0 : 50,
-              right: isAdmin ? 50 : 0,
+              left: isMe ? 0 : 50,
+              right: isMe ? 50 : 0,
             ),
             child: Row(
               mainAxisAlignment:
-                  isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
+                  isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
               children: [
-                if (isAdmin && msg.isRead)
-                  const Icon(
-                    Icons.done_all,
-                    size: 14,
-                    color: Color(0xFF4FC3F7),
-                  ),
-                if (isAdmin && !msg.isRead)
-                  const Icon(
-                    Icons.done_all,
-                    size: 14,
-                    color: Color(0xFF9E9E9E),
-                  ),
-                const SizedBox(width: 4),
                 Text(
                   msg.time,
                   style: const TextStyle(
@@ -420,38 +374,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       ),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
-              ),
-              child: const Icon(Icons.add, size: 20, color: Color(0xFF757575)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
-              ),
-              child: const Icon(
-                Icons.image_outlined,
-                size: 20,
-                color: Color(0xFF757575),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxHeight: 100),
@@ -509,91 +431,78 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       ),
     );
   }
+}
 
-  void _showMoreOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E0E0),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            _buildOptionTile(
-              icon: Icons.mark_chat_read_outlined,
-              label: 'ทำเครื่องหมายว่าอ่านแล้ว',
-              color: const Color(0xFF1565C0),
-            ),
-            _buildOptionTile(
-              icon: Icons.priority_high_rounded,
-              label: 'เปลี่ยนระดับความเร่งด่วน',
-              color: const Color(0xFFF57C00),
-            ),
-            _buildOptionTile(
-              icon: Icons.archive_outlined,
-              label: 'เก็บเข้าคลัง',
-              color: const Color(0xFF757575),
-            ),
-            _buildOptionTile(
-              icon: Icons.delete_outline,
-              label: 'ลบการสนทนา',
-              color: const Color(0xFFE53935),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+class AdminChatMessage {
+  final int id;
+  final String text;
+  final bool isMe;
+  final String time;
 
-  Widget _buildOptionTile({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-      title: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1A1A2E),
-        ),
-      ),
-      onTap: () => Navigator.pop(context),
+  AdminChatMessage({
+    required this.id,
+    required this.text,
+    required this.isMe,
+    required this.time,
+  });
+
+  factory AdminChatMessage.fromJson(Map<String, dynamic> json) {
+    return AdminChatMessage(
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      text: json['text']?.toString() ?? '',
+      isMe: json['is_me'] == true,
+      time: json['time_text']?.toString() ?? '',
     );
   }
 }
 
-class AdminChatMessage {
-  final String text;
-  final bool isAdmin;
-  final String time;
-  final bool isRead;
+class AdminRoomApi {
+  static const String baseUrl = 'http://localhost:3000/api/chat-v2';
 
-  AdminChatMessage({
-    required this.text,
-    required this.isAdmin,
-    required this.time,
-    required this.isRead,
-  });
+  static Future<List<AdminChatMessage>> getMessages(int conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/conversations/$conversationId/messages'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('โหลดข้อความไม่สำเร็จ: ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is List) {
+      return decoded
+          .map((e) => AdminChatMessage.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    throw Exception('รูปแบบข้อมูลข้อความไม่ถูกต้อง');
+  }
+
+  static Future<void> sendMessage({
+    required int conversationId,
+    required String text,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/conversations/$conversationId/messages'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'text': text}),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('ส่งข้อความไม่สำเร็จ: ${response.body}');
+    }
+  }
 }

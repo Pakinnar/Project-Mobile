@@ -31,11 +31,35 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
 
     try {
       final worker = await JobApiService.getHiredWorker(jobId);
-      _futureWorkerProfile = JobApiService.getWorkerProfile(worker.workerUserId);
+      _futureWorkerProfile = JobApiService.getWorkerProfile(
+        worker.workerUserId,
+      );
       return worker;
     } catch (_) {
       return null;
     }
+  }
+
+  String _normalizeImageUrl(String? imgPath) {
+    if (imgPath == null || imgPath.trim().isEmpty) {
+      return 'https://picsum.photos/id/119/600/300';
+    }
+
+    final raw = imgPath.trim();
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+
+    if (raw.startsWith('/uploads/')) {
+      return 'http://localhost:3000$raw';
+    }
+
+    if (raw.startsWith('uploads/')) {
+      return 'http://localhost:3000/$raw';
+    }
+
+    return 'https://picsum.photos/id/119/600/300';
   }
 
   @override
@@ -73,9 +97,7 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Image.network(
-                  (job['img'] != null && job['img'].toString().isNotEmpty)
-                      ? job['img']
-                      : 'https://picsum.photos/id/119/600/300',
+                  _normalizeImageUrl(job['img']?.toString()),
                   width: double.infinity,
                   height: 250,
                   fit: BoxFit.cover,
@@ -191,9 +213,7 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -230,8 +250,9 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundImage:
-                    hiredWorker.img.isNotEmpty ? NetworkImage(hiredWorker.img) : null,
+                backgroundImage: hiredWorker.img.isNotEmpty
+                    ? NetworkImage(hiredWorker.img)
+                    : null,
                 child: hiredWorker.img.isEmpty
                     ? Text(
                         hiredWorker.name.isNotEmpty
@@ -257,10 +278,7 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
                       hiredWorker.jobTitle.isNotEmpty
                           ? hiredWorker.jobTitle
                           : 'ไม่ระบุตำแหน่ง',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                      ),
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -370,10 +388,7 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
                     );
                   },
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(
-                color: Color(0xFFE2E8F0),
-                width: 1.5,
-              ),
+              side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
@@ -505,8 +520,9 @@ class _JobDetailHiringPageState extends State<JobDetailHiringPage> {
     bool isSelected, {
     VoidCallback? onTap,
   }) {
-    final Color color =
-        isSelected ? const Color(0xFF00E676) : const Color(0xFF94A3B8);
+    final Color color = isSelected
+        ? const Color(0xFF00E676)
+        : const Color(0xFF94A3B8);
     return InkWell(
       onTap: onTap,
       child: SizedBox(

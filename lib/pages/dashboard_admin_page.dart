@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import '../services/dashboard_service.dart';
 import 'announcement_admin_page.dart';
 import 'verify_admin_page.dart';
@@ -38,6 +37,13 @@ class _ActivityItem {
   });
 }
 
+class _ChartPoint {
+  final String label;
+  final double value;
+
+  const _ChartPoint({required this.label, required this.value});
+}
+
 class DashboardAdminPage extends StatefulWidget {
   const DashboardAdminPage({super.key});
 
@@ -54,6 +60,8 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
 
   List<_StatCardData> _stats = [];
   List<_ActivityItem> _activities = [];
+  List<_ChartPoint> _revenueChart = [];
+  List<_ChartPoint> _jobsChart = [];
 
   final List<Map<String, dynamic>> _quickActions = const [
     {'label': 'อนุมัติงาน', 'icon': Icons.fact_check_outlined},
@@ -75,44 +83,70 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     });
 
     try {
-      final statsData = await DashboardService.getStats();
+      final overview = await DashboardService.getOverview();
       final activitiesData = await DashboardService.getActivities();
+      final chartsData = await DashboardService.getCharts();
 
       setState(() {
         _stats = [
           _StatCardData(
             title: 'ผู้ใช้งานทั้งหมด',
-            value: statsData['users']['total'].toString(),
+            value: '${overview['users']?['total'] ?? 0}',
             subtitle:
-                'เพิ่มขึ้น ${statsData['users']['new_this_month']} รายจากเดือนที่แล้ว',
-            badge: '+${statsData['users']['growth_percent']}%',
+                'เพิ่มขึ้น ${overview['users']?['new_this_month'] ?? 0} รายในเดือนนี้',
+            badge: _formatGrowth(overview['users']?['growth_percent'] ?? 0),
             subtitleIcon: Icons.group_outlined,
           ),
           _StatCardData(
             title: 'งานที่เปิดอยู่',
-            value: statsData['jobs']['open'].toString(),
-            subtitle: 'งานใหม่ ${statsData['jobs']['new_today']} รายการวันนี้',
-            badge: '+5%',
+            value: '${overview['jobs']?['open'] ?? 0}',
+            subtitle:
+                'งานใหม่สัปดาห์นี้ ${overview['jobs']?['new_this_week'] ?? 0} รายการ',
+            badge: _formatGrowth(overview['jobs']?['growth_percent'] ?? 0),
             subtitleIcon: Icons.work_outline,
           ),
           _StatCardData(
             title: 'รายได้รวม',
-            value: '฿${statsData['earnings']['total']}',
+            value: '฿${_formatMoney(overview['earnings']?['total'] ?? 0)}',
             subtitle:
-                'ค่าธรรมเนียมจากธุรกรรม ${statsData['earnings']['transaction_count']} รายการ',
-            badge: '+8%',
+                'ค่าธรรมเนียมจากธุรกรรม ${overview['earnings']?['transaction_count'] ?? 0} รายการ',
+            badge: _formatGrowth(overview['earnings']?['growth_percent'] ?? 0),
             subtitleIcon: Icons.receipt_long_outlined,
           ),
         ];
 
-        _activities = activitiesData.map<_ActivityItem>((item) {
-          return _ActivityItem(
-            title: item['title'] ?? '',
-            subtitle: item['subtitle'] ?? '',
-            iconBgColor: _getIconBgColor(item['icon_type'] ?? 'info'),
-            icon: _getIcon(item['icon_type'] ?? 'info'),
-          );
-        }).toList();
+        _activities = (activitiesData is List ? activitiesData : [])
+            .map<_ActivityItem>((item) {
+              return _ActivityItem(
+                title: item['title']?.toString() ?? '',
+                subtitle: item['subtitle']?.toString() ?? '',
+                iconBgColor: _getIconBgColor(
+                  item['icon_type']?.toString() ?? 'info',
+                ),
+                icon: _getIcon(item['icon_type']?.toString() ?? 'info'),
+              );
+            })
+            .toList();
+
+        final revenueRaw = chartsData['revenue_7d'] as List? ?? [];
+        _revenueChart = revenueRaw
+            .map(
+              (e) => _ChartPoint(
+                label: e['label']?.toString() ?? '',
+                value: double.tryParse(e['value'].toString()) ?? 0,
+              ),
+            )
+            .toList();
+
+        final jobsRaw = chartsData['jobs_7d'] as List? ?? [];
+        _jobsChart = jobsRaw
+            .map(
+              (e) => _ChartPoint(
+                label: e['label']?.toString() ?? '',
+                value: double.tryParse(e['value'].toString()) ?? 0,
+              ),
+            )
+            .toList();
 
         _isLoading = false;
       });
@@ -122,6 +156,16 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
         _isLoading = false;
       });
     }
+  }
+
+  String _formatGrowth(dynamic value) {
+    final number = int.tryParse(value.toString()) ?? 0;
+    return number >= 0 ? '+$number%' : '$number%';
+  }
+
+  String _formatMoney(dynamic value) {
+    final number = double.tryParse(value.toString()) ?? 0;
+    return number.toStringAsFixed(2);
   }
 
   Color _getIconBgColor(String type) {
@@ -158,16 +202,22 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     if (index == _selectedIndex) return;
     switch (index) {
       case 1:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const VerifyPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const VerifyPage()),
+        );
         break;
       case 2:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const UsersPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UsersPage()),
+        );
         break;
       case 3:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const ChatListPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ChatListPage()),
+        );
         break;
       default:
         setState(() => _selectedIndex = index);
@@ -177,20 +227,28 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
   void _onQuickActionTap(int index) {
     switch (index) {
       case 0:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const VerifyPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const VerifyPage()),
+        );
         break;
       case 1:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const UsersPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UsersPage()),
+        );
         break;
       case 2:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const AnnouncementPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AnnouncementPage()),
+        );
         break;
       case 3:
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const ReportPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReportPage()),
+        );
         break;
     }
   }
@@ -209,50 +267,77 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                       child: CircularProgressIndicator(color: _green),
                     )
                   : _errorMessage != null
-                      ? _buildError()
-                      : RefreshIndicator(
-                          color: _green,
-                          onRefresh: _loadDashboard,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ..._stats.map((s) => _buildStatCard(s)),
-                                const SizedBox(height: 8),
-                                _buildSectionHeader(
-                                    icon: Icons.bolt, title: 'จัดการด่วน'),
-                                const SizedBox(height: 12),
-                                _buildQuickActions(),
-                                const SizedBox(height: 20),
-                                _buildSectionHeader(
-                                  icon: Icons.history,
-                                  title: 'กิจกรรมล่าสุด',
-                                  trailing: TextButton(
-                                    onPressed: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) => const ReportPage()),
-                                    ),
-                                    child: const Text(
-                                      'ดูทั้งหมด',
-                                      style: TextStyle(
-                                          color: _green,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13),
-                                    ),
+                  ? _buildError()
+                  : RefreshIndicator(
+                      color: _green,
+                      onRefresh: _loadDashboard,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ..._stats.map(_buildStatCard),
+                            const SizedBox(height: 20),
+                            _buildSectionHeader(
+                              icon: Icons.show_chart,
+                              title: 'ภาพรวมรายได้ 7 วันล่าสุด',
+                            ),
+                            const SizedBox(height: 12),
+                            _buildSimpleBarChart(
+                              _revenueChart,
+                              barColor: _green,
+                              emptyText: 'ยังไม่มีข้อมูลรายได้',
+                            ),
+                            const SizedBox(height: 20),
+                            _buildSectionHeader(
+                              icon: Icons.bar_chart,
+                              title: 'งานใหม่ 7 วันล่าสุด',
+                            ),
+                            const SizedBox(height: 12),
+                            _buildSimpleBarChart(
+                              _jobsChart,
+                              barColor: Colors.blue,
+                              emptyText: 'ยังไม่มีข้อมูลงาน',
+                            ),
+                            const SizedBox(height: 20),
+                            _buildSectionHeader(
+                              icon: Icons.bolt,
+                              title: 'จัดการด่วน',
+                            ),
+                            const SizedBox(height: 12),
+                            _buildQuickActions(),
+                            const SizedBox(height: 20),
+                            _buildSectionHeader(
+                              icon: Icons.history,
+                              title: 'กิจกรรมล่าสุด',
+                              trailing: TextButton(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ReportPage(),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                ..._activities
-                                    .map((a) => _buildActivityTile(a)),
-                                const SizedBox(height: 16),
-                              ],
+                                child: const Text(
+                                  'ดูทั้งหมด',
+                                  style: TextStyle(
+                                    color: _green,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            ..._activities.map(_buildActivityTile),
+                            const SizedBox(height: 16),
+                          ],
                         ),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -298,17 +383,23 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-                color: _green, borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.grid_view_rounded,
-                color: Colors.white, size: 22),
+              color: _green,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.grid_view_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           const Text(
             'แผงควบคุมระบบ',
             style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A2E)),
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1A1A2E),
+            ),
           ),
           const Spacer(),
           GestureDetector(
@@ -327,17 +418,23 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     );
   }
 
-  Widget _buildSectionHeader(
-      {required IconData icon, required String title, Widget? trailing}) {
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    Widget? trailing,
+  }) {
     return Row(
       children: [
         Icon(icon, color: _green, size: 22),
         const SizedBox(width: 6),
-        Text(title,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A2E))),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1A1A2E),
+          ),
+        ),
         const Spacer(),
         if (trailing != null) trailing,
       ],
@@ -353,9 +450,10 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -364,46 +462,161 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(data.title,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF757575),
-                      fontWeight: FontWeight.w500)),
+              Text(
+                data.title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF757575),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text(data.badge,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _green)),
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  data.badge,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _green,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(data.value,
-              style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A2E))),
+          Text(
+            data.value,
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
-              Icon(data.subtitleIcon,
-                  size: 15, color: const Color(0xFF9E9E9E)),
+              Icon(data.subtitleIcon, size: 15, color: const Color(0xFF9E9E9E)),
               const SizedBox(width: 4),
               Expanded(
-                child: Text(data.subtitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF9E9E9E)),
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  data.subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9E9E9E),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleBarChart(
+    List<_ChartPoint> data, {
+    required Color barColor,
+    required String emptyText,
+  }) {
+    if (data.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Text(emptyText, style: const TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    final maxValue = data
+        .map((e) => e.value)
+        .fold<double>(0, (prev, curr) => curr > prev ? curr : prev);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: data.map((item) {
+          final ratio = maxValue <= 0 ? 0.0 : item.value / maxValue;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 52,
+                  child: Text(
+                    item.label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF757575),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F3F4),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: ratio.clamp(0.0, 1.0),
+                        child: Container(
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: barColor,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 70,
+                  child: Text(
+                    item.value % 1 == 0
+                        ? item.value.toInt().toString()
+                        : item.value.toStringAsFixed(2),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -429,9 +642,10 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2))
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
             child: Column(
@@ -441,17 +655,24 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(12)),
-                  child: Icon(action['icon'] as IconData,
-                      color: _green, size: 24),
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    action['icon'] as IconData,
+                    color: _green,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(action['label'] as String,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E))),
+                Text(
+                  action['label'] as String,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
               ],
             ),
           ),
@@ -469,9 +690,10 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2))
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Row(
@@ -480,33 +702,42 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-                color: item.iconBgColor,
-                borderRadius: BorderRadius.circular(12)),
-            child: Icon(item.icon,
-                size: 22,
-                color: item.iconBgColor.computeLuminance() > 0.6
-                    ? Colors.blueGrey.shade700
-                    : Colors.white),
+              color: item.iconBgColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              item.icon,
+              size: 22,
+              color: item.iconBgColor.computeLuminance() > 0.6
+                  ? Colors.blueGrey.shade700
+                  : Colors.white,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E))),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(item.subtitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF9E9E9E))),
+                Text(
+                  item.subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9E9E9E),
+                  ),
+                ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right,
-              color: Color(0xFFBDBDBD), size: 20),
+          const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD), size: 20),
         ],
       ),
     );
@@ -521,18 +752,28 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
       unselectedItemColor: const Color(0xFF9E9E9E),
       backgroundColor: Colors.white,
       elevation: 8,
-      selectedLabelStyle:
-          const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+      selectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 12,
+      ),
       unselectedLabelStyle: const TextStyle(fontSize: 12),
       items: const [
         BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded), label: 'แดชบอร์ด'),
+          icon: Icon(Icons.grid_view_rounded),
+          label: 'แดชบอร์ด',
+        ),
         BottomNavigationBarItem(
-            icon: Icon(Icons.shield_outlined), label: 'ตรวจสอบ'),
+          icon: Icon(Icons.shield_outlined),
+          label: 'ตรวจสอบ',
+        ),
         BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined), label: 'ผู้ใช้'),
+          icon: Icon(Icons.group_outlined),
+          label: 'ผู้ใช้',
+        ),
         BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline), label: 'แชท'),
+          icon: Icon(Icons.chat_bubble_outline),
+          label: 'แชท',
+        ),
       ],
     );
   }

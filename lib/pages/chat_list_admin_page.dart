@@ -1,29 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'chat_room_admin_page.dart';
 import 'verify_admin_page.dart';
 import 'users_admin_page.dart';
 import 'dashboard_admin_page.dart';
-import '../services/chat_service.dart';
-
-// ─────────────────────────────────────────────
-// DATA MODELS
-// ─────────────────────────────────────────────
 
 enum ChatPriority { urgent, pending, medium, normal }
-
-class ChatMessage {
-  final String text;
-  final bool isAdmin;
-  final String time;
-  final bool isRead;
-
-  const ChatMessage({
-    required this.text,
-    required this.isAdmin,
-    required this.time,
-    this.isRead = false,
-  });
-}
 
 class ChatConversation {
   final int id;
@@ -31,9 +15,9 @@ class ChatConversation {
   final String? avatarUrl;
   final String lastMessage;
   final String time;
-  final ChatPriority priority;
   final bool isOnline;
-  final List<ChatMessage> messages;
+  final int unreadCount;
+  final String type;
 
   const ChatConversation({
     required this.id,
@@ -41,15 +25,11 @@ class ChatConversation {
     this.avatarUrl,
     required this.lastMessage,
     required this.time,
-    required this.priority,
     this.isOnline = false,
-    required this.messages,
+    this.unreadCount = 0,
+    required this.type,
   });
 }
-
-// ─────────────────────────────────────────────
-// CHAT LIST PAGE
-// ─────────────────────────────────────────────
 
 class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key});
@@ -79,7 +59,7 @@ class _ChatListPageState extends State<ChatListPage> {
     });
 
     try {
-      final data = await ChatService.getConversations();
+      final data = await AdminChatApi.getConversations();
 
       final chats = data.map<ChatConversation>((json) {
         return ChatConversation(
@@ -88,9 +68,9 @@ class _ChatListPageState extends State<ChatListPage> {
           avatarUrl: json['avatar_url']?.toString(),
           lastMessage: json['last_message']?.toString() ?? '',
           time: json['time_text']?.toString() ?? '',
-          priority: _mapPriority(json['priority']?.toString()),
           isOnline: json['is_online'] == true || json['is_online'] == 1,
-          messages: const [],
+          unreadCount: _toInt(json['unread_count']),
+          type: json['type']?.toString() ?? 'user_user',
         );
       }).toList();
 
@@ -103,20 +83,6 @@ class _ChatListPageState extends State<ChatListPage> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
         _isLoading = false;
       });
-    }
-  }
-
-  ChatPriority _mapPriority(String? value) {
-    switch (value) {
-      case 'urgent':
-        return ChatPriority.urgent;
-      case 'pending':
-        return ChatPriority.pending;
-      case 'medium':
-        return ChatPriority.medium;
-      case 'normal':
-      default:
-        return ChatPriority.normal;
     }
   }
 
@@ -186,17 +152,6 @@ class _ChatListPageState extends State<ChatListPage> {
                         ),
             ),
           ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: _green,
-        elevation: 4,
-        shape: const CircleBorder(),
-        child: const Icon(
-          Icons.add_comment_outlined,
-          color: Colors.white,
-          size: 24,
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -272,7 +227,15 @@ class _ChatListPageState extends State<ChatListPage> {
 
   Widget _buildChatTile(ChatConversation chat) {
     return InkWell(
-      onTap: () => _openChat(chat),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatRoomPage(conversation: chat),
+          ),
+        );
+        await _loadConversations();
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
@@ -315,11 +278,27 @@ class _ChatListPageState extends State<ChatListPage> {
                       color: Color(0xFF757575),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _buildPriorityBadge(chat.priority),
                 ],
               ),
             ),
+            if (chat.unreadCount > 0) ...[
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _green,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${chat.unreadCount}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -362,60 +341,6 @@ class _ChatListPageState extends State<ChatListPage> {
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildPriorityBadge(ChatPriority priority) {
-    late String label;
-    late Color bg;
-    late Color textColor;
-
-    switch (priority) {
-      case ChatPriority.urgent:
-        label = 'เร่งด่วน';
-        bg = const Color(0xFFFFEBEE);
-        textColor = const Color(0xFFE53935);
-        break;
-      case ChatPriority.pending:
-        label = 'รอดำเนินการ';
-        bg = const Color(0xFFE3F2FD);
-        textColor = const Color(0xFF1565C0);
-        break;
-      case ChatPriority.medium:
-        label = 'ปานกลาง';
-        bg = const Color(0xFFFFF9C4);
-        textColor = const Color(0xFFF57F17);
-        break;
-      case ChatPriority.normal:
-        label = 'ปกติ';
-        bg = const Color(0xFFF5F5F5);
-        textColor = const Color(0xFF757575);
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: textColor,
-        ),
-      ),
-    );
-  }
-
-  void _openChat(ChatConversation chat) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChatRoomPage(conversation: chat),
-      ),
     );
   }
 
@@ -469,6 +394,34 @@ class _ChatListPageState extends State<ChatListPage> {
         ),
       ],
     );
+  }
+}
+
+class AdminChatApi {
+  static const String baseUrl = 'http://localhost:3000/api/chat-v2';
+
+  static Future<List<Map<String, dynamic>>> getConversations() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/conversations'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('โหลดรายการแชตไม่สำเร็จ: ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is List) {
+      return decoded.map((e) => e as Map<String, dynamic>).toList();
+    }
+
+    throw Exception('รูปแบบข้อมูลรายการแชตไม่ถูกต้อง');
   }
 }
 

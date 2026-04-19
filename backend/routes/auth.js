@@ -53,12 +53,36 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const [result] = await pool.query(
-      'INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, ?)',
-      [full_name, email, passwordHash, 'user']
+      `
+      INSERT INTO users (
+        full_name,
+        email,
+        password_hash,
+        role,
+        status,
+        is_verified,
+        verify_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [full_name, email, passwordHash, 'user', 'active', 0, 'pending']
     );
 
     const [rows] = await pool.query(
-      'SELECT id, full_name, email, role, created_at FROM users WHERE id = ? LIMIT 1',
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        role,
+        status,
+        is_verified,
+        verify_status,
+        created_at
+      FROM users
+      WHERE id = ?
+      LIMIT 1
+      `,
       [result.insertId]
     );
 
@@ -89,7 +113,21 @@ router.post('/login', async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT * FROM users WHERE email = ? LIMIT 1',
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        password_hash,
+        role,
+        status,
+        is_verified,
+        verify_status,
+        created_at
+      FROM users
+      WHERE email = ?
+      LIMIT 1
+      `,
       [email]
     );
 
@@ -104,6 +142,12 @@ router.post('/login', async (req, res) => {
     if (role && user.role !== role) {
       return res.status(403).json({
         message: 'สิทธิ์การเข้าใช้งานไม่ถูกต้อง',
+      });
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({
+        message: 'บัญชีของคุณถูกระงับการใช้งาน',
       });
     }
 
@@ -125,6 +169,9 @@ router.post('/login', async (req, res) => {
         full_name: user.full_name,
         email: user.email,
         role: user.role,
+        status: user.status,
+        is_verified: user.is_verified,
+        verify_status: user.verify_status,
       },
     });
   } catch (error) {
@@ -135,7 +182,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 
@@ -148,7 +195,45 @@ function authMiddleware(req, res, next) {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded;
+    const [rows] = await pool.query(
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        role,
+        status,
+        is_verified,
+        verify_status,
+        created_at
+      FROM users
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [decoded.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        message: 'ไม่พบผู้ใช้',
+      });
+    }
+
+    const user = rows[0];
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({
+        message: 'บัญชีของคุณถูกระงับการใช้งาน',
+      });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    };
+
     next();
   } catch (error) {
     return res.status(401).json({
@@ -160,7 +245,20 @@ function authMiddleware(req, res, next) {
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, full_name, email, role, created_at FROM users WHERE id = ? LIMIT 1',
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        role,
+        status,
+        is_verified,
+        verify_status,
+        created_at
+      FROM users
+      WHERE id = ?
+      LIMIT 1
+      `,
       [req.user.id]
     );
 

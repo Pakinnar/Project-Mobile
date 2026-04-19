@@ -7,7 +7,7 @@ class AuthService {
   // Chrome ใช้ localhost
   static const String baseUrl = 'http://localhost:3000/api/auth';
   // ถ้าใช้ Android emulator:
-  // static const String baseUrl = 'http://10.0.2.2:3000/api/auth';
+  // static const String baseUrl = 'https://192.168.1.162:3000/api/auth';
 
   static Future<Map<String, dynamic>> register({
     required String fullName,

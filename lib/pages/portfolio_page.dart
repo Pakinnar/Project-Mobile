@@ -10,19 +10,28 @@ class PortfolioPage extends StatefulWidget {
 }
 
 class _PortfolioPageState extends State<PortfolioPage> {
-  late Future<List<PortfolioItem>> _future;
-  late int userId;
+  Future<List<PortfolioItem>>? _future;
+  int? userId;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _future = _loadPortfolios();
+    if (_future == null) {
+      _future = _loadPortfolios();
+    }
   }
 
   Future<List<PortfolioItem>> _loadPortfolios() async {
     final routeUserId = ModalRoute.of(context)?.settings.arguments as int?;
     userId = routeUserId ?? await AuthService.getCurrentUserId();
-    return ProfileApiService.getPortfolios(userId);
+    return ProfileApiService.getPortfolios(userId!);
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _future = _loadPortfolios();
+    });
+    await _future;
   }
 
   @override
@@ -35,7 +44,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, true),
         ),
         title: const Text(
           'ผลงานของฉัน',
@@ -53,65 +62,108 @@ class _PortfolioPageState extends State<PortfolioPage> {
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text('โหลดผลงานไม่สำเร็จ\n${snapshot.error}'),
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'โหลดผลงานไม่สำเร็จ\n${snapshot.error}',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 
           final portfolioItems = snapshot.data ?? [];
 
           if (portfolioItems.isEmpty) {
-            return const Center(child: Text('ยังไม่มีรูปผลงานในระบบ'));
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(
+                    height: 500,
+                    child: Center(
+                      child: Text('ยังไม่มีรูปผลงานในระบบ'),
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: portfolioItems.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1,
-            ),
-            itemBuilder: (context, index) {
-              final item = portfolioItems[index];
-              final imageUrl = item.imageUrl ?? '';
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: GridView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: portfolioItems.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1,
+              ),
+              itemBuilder: (context, index) {
+                final item = portfolioItems[index];
+                final imageUrl = item.imageUrl ?? '';
 
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FullScreenImagePage(
-                        imageUrl: imageUrl,
-                        heroTag: 'portfolio_$index',
-                        description: item.description,
-                      ),
-                    ),
-                  );
-                },
-                child: Hero(
-                  tag: 'portfolio_$index',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenImagePage(
+                          imageUrl: imageUrl,
+                          heroTag: 'portfolio_$index',
+                          description: item.description,
                         ),
-                      ],
+                      ),
+                    );
+                  },
+                  child: Hero(
+                    tag: 'portfolio_$index',
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(Icons.image_not_supported),
+                                );
+                              },
+                            )
+                          : const Center(
+                              child: Icon(Icons.image_not_supported),
+                            ),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: imageUrl.isNotEmpty
-                        ? Image.network(imageUrl, fit: BoxFit.cover)
-                        : const Center(child: Icon(Icons.image_not_supported)),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),
@@ -150,8 +202,20 @@ class FullScreenImagePage extends StatelessWidget {
                   minScale: 0.8,
                   maxScale: 4,
                   child: imageUrl.isNotEmpty
-                      ? Image.network(imageUrl, fit: BoxFit.contain)
-                      : const Icon(Icons.image_not_supported, color: Colors.white),
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.white,
+                            );
+                          },
+                        )
+                      : const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.white,
+                        ),
                 ),
               ),
             ),

@@ -444,19 +444,40 @@ class _MyJobsPageState extends State<MyJobsPage> {
     }
   }
 
-  Widget _buildJobImage(String? imgPath) {
-    if (imgPath == null || imgPath.isEmpty) return _imagePlaceholder();
+  String? _normalizeImageUrl(String? imgPath) {
+  if (imgPath == null || imgPath.trim().isEmpty) return null;
 
-    if (imgPath.startsWith('http')) {
-      return Image.network(
-        imgPath,
-        width: 85,
-        height: 85,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _imagePlaceholder(),
-      );
-    }
+  final raw = imgPath.trim();
 
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw;
+  }
+
+  if (raw.startsWith('/uploads/')) {
+    return 'http://localhost:3000$raw';
+  }
+
+  if (raw.startsWith('uploads/')) {
+    return 'http://localhost:3000/$raw';
+  }
+
+  return null;
+}
+
+Widget _buildJobImage(String? imgPath) {
+  final normalizedUrl = _normalizeImageUrl(imgPath);
+
+  if (normalizedUrl != null) {
+    return Image.network(
+      normalizedUrl,
+      width: 85,
+      height: 85,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => _imagePlaceholder(),
+    );
+  }
+
+  if (imgPath != null && imgPath.isNotEmpty) {
     final file = File(imgPath);
     if (file.existsSync()) {
       return Image.file(
@@ -467,9 +488,10 @@ class _MyJobsPageState extends State<MyJobsPage> {
         errorBuilder: (context, error, stackTrace) => _imagePlaceholder(),
       );
     }
-
-    return _imagePlaceholder();
   }
+
+  return _imagePlaceholder();
+}
 
   Widget _imagePlaceholder() {
     return Container(

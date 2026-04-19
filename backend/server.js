@@ -48,3 +48,29 @@ app.use('/api', jobRoutes);
 
 const agoraRoutes = require('./routes/agora');
 app.use('/api', agoraRoutes);
+
+const chatV2Routes = require('./routes/chat_v2');
+app.use('/api/chat-v2', chatV2Routes);
+
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const mapsRoutes = require('./routes/maps');
+app.use('/api/maps', mapsRoutes);
+
+const earningsRoutes = require('./routes/earnings');
+app.use('/api/earnings', earningsRoutes);
+
+const reviewsRoutes = require('./routes/reviews');
+app.use('/api/reviews', reviewsRoutes);
+
+const reportRoutes = require('./routes/report');
+app.use('/api/report', reportRoutes);
+
+
+
+
+
+
+
+

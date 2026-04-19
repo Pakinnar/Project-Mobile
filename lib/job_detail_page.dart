@@ -83,15 +83,38 @@ class JobDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildImageWidget(String? imgPath) {
-    if (imgPath == null || imgPath.isEmpty) return _imagePlaceholder();
-    if (imgPath.startsWith('http')) {
-      return Image.network(
-        imgPath,
-        fit: BoxFit.cover,
-        errorBuilder: (c, e, s) => _imagePlaceholder(),
-      );
-    }
+  String? _normalizeImageUrl(String? imgPath) {
+  if (imgPath == null || imgPath.trim().isEmpty) return null;
+
+  final raw = imgPath.trim();
+
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw;
+  }
+
+  if (raw.startsWith('/uploads/')) {
+    return 'http://localhost:3000$raw';
+  }
+
+  if (raw.startsWith('uploads/')) {
+    return 'http://localhost:3000/$raw';
+  }
+
+  return null;
+}
+
+Widget _buildImageWidget(String? imgPath) {
+  final normalizedUrl = _normalizeImageUrl(imgPath);
+
+  if (normalizedUrl != null) {
+    return Image.network(
+      normalizedUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (c, e, s) => _imagePlaceholder(),
+    );
+  }
+
+  if (imgPath != null && imgPath.isNotEmpty) {
     final file = File(imgPath);
     if (file.existsSync()) {
       return Image.file(
@@ -100,8 +123,10 @@ class JobDetailPage extends StatelessWidget {
         errorBuilder: (c, e, s) => _imagePlaceholder(),
       );
     }
-    return _imagePlaceholder();
   }
+
+  return _imagePlaceholder();
+}
 
   Widget _imagePlaceholder() {
     return Container(

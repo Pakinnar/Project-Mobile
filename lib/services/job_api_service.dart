@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 class JobApiService {
   static const String baseUrl = 'http://localhost:3000/api';
   // Android Emulator:
-  // static const String baseUrl = 'http://10.0.2.2:3000/api';
+  // static const String baseUrl = 'https://192.168.1.162:3000/api';
 
   static Future<JobApplicantsResponse> getApplicants(int jobId) async {
     final response = await http.get(
@@ -236,6 +236,33 @@ class JobApiService {
     return JobItem.fromJson(jsonDecode(response.body));
   }
 
+  static Future<void> submitJobReport({
+    required int jobId,
+    required int reporterUserId,
+    required int reportedUserId,
+    required String message,
+  }) async {
+    final uri = Uri.parse('$baseUrl/report');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'job_id': jobId,
+        'reporter_user_id': reporterUserId,
+        'reported_user_id': reportedUserId,
+        'reason': message,
+      }),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('ส่งรายงานไม่สำเร็จ: ${response.body}');
+    }
+  }
+
+  // แก้เฉพาะ method createJob ใน job_api_service.dart
+  // เพิ่ม latitude และ longitude parameter
+
   static Future<JobItem> createJob({
     required int userId,
     required String title,
@@ -247,6 +274,8 @@ class JobApiService {
     required String workTime,
     Uint8List? imageBytes,
     String? imageFileName,
+    double? latitude, // ← เพิ่ม
+    double? longitude, // ← เพิ่ม
   }) async {
     final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/jobs'));
 
@@ -258,6 +287,10 @@ class JobApiService {
     request.fields['location'] = location;
     request.fields['work_date'] = workDate;
     request.fields['work_time'] = workTime;
+
+    // ส่ง lat/lng ถ้ามี
+    if (latitude != null) request.fields['latitude'] = latitude.toString();
+    if (longitude != null) request.fields['longitude'] = longitude.toString();
 
     if (imageBytes != null && imageBytes.isNotEmpty) {
       request.files.add(

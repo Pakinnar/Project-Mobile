@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/chat_service.dart';
 import 'home_page.dart';
 import 'category_page.dart';
 import 'myjobs_page.dart';
@@ -31,6 +30,79 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  Future<void> _startAdminChat() async {
+    try {
+      final conversationId = await ChatApiService.startAdminChat();
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatRoomUserPage(
+            contact: ChatListItem(
+              id: conversationId,
+              userName: 'แอดมิน',
+              lastMessage: '',
+              unreadCount: 0,
+              timeText: '',
+              isOnline: false,
+              avatarUrl: null,
+              type: 'user_admin',
+            ),
+          ),
+        ),
+      );
+
+      await _reloadChats();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เริ่มแชตกับแอดมินไม่สำเร็จ: $e')),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteChat(ChatListItem chat) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('ลบแชต'),
+        content: Text('ต้องการลบแชตกับ "${chat.userName}" ใช่ไหม'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'ลบ',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+
+    try {
+      await ChatApiService.deleteConversation(chat.id);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ลบแชตสำเร็จ')),
+      );
+
+      await _reloadChats();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ลบแชตไม่สำเร็จ: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,6 +116,13 @@ class _ChatPageState extends State<ChatPage> {
           'ข้อความ',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            onPressed: _startAdminChat,
+            icon: const Icon(Icons.support_agent, color: Colors.black87),
+            tooltip: 'คุยกับแอดมิน',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _reloadChats,
@@ -77,12 +156,20 @@ class _ChatPageState extends State<ChatPage> {
 
             if (chats.isEmpty) {
               return ListView(
-                children: const [
-                  SizedBox(height: 220),
-                  Center(
+                children: [
+                  const SizedBox(height: 180),
+                  const Center(
                     child: Text(
                       'ยังไม่มีข้อความในระบบ',
                       style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: _startAdminChat,
+                      icon: const Icon(Icons.support_agent),
+                      label: const Text('เริ่มคุยกับแอดมิน'),
                     ),
                   ),
                 ],
@@ -105,86 +192,93 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildChatTile({required ChatListItem chat}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: ListTile(
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatRoomUserPage(contact: chat),
-            ),
-          );
-          await _reloadChats();
-        },
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFFE8F5E9),
-          backgroundImage: (chat.avatarUrl != null && chat.avatarUrl!.isNotEmpty)
-              ? NetworkImage(chat.avatarUrl!)
-              : null,
-          child: (chat.avatarUrl == null || chat.avatarUrl!.isEmpty)
-              ? Text(
-                  chat.userName.isNotEmpty ? chat.userName.characters.first : '?',
-                )
-              : null,
+    return GestureDetector(
+      onLongPress: () => _confirmDeleteChat(chat),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
         ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                chat.userName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
+        child: ListTile(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatRoomUserPage(contact: chat),
               ),
-            ),
-            if (chat.isOnline)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(left: 6),
-                decoration: const BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
-        ),
-        subtitle: Text(
-          chat.lastMessage ?? 'ยังไม่มีข้อความ',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              chat.timeText,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            if (chat.unreadCount > 0) ...[
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00E676),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+            );
+            await _reloadChats();
+          },
+          leading: CircleAvatar(
+            backgroundColor: const Color(0xFFE8F5E9),
+            backgroundImage:
+                (chat.avatarUrl != null && chat.avatarUrl!.isNotEmpty)
+                    ? NetworkImage(chat.avatarUrl!)
+                    : null,
+            child: (chat.avatarUrl == null || chat.avatarUrl!.isEmpty)
+                ? Text(
+                    chat.userName.isNotEmpty
+                        ? chat.userName.characters.first
+                        : '?',
+                  )
+                : null,
+          ),
+          title: Row(
+            children: [
+              Expanded(
                 child: Text(
-                  chat.unreadCount.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                  chat.userName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (chat.isOnline)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(left: 6),
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
                   ),
                 ),
-              ),
             ],
-          ],
+          ),
+          subtitle: Text(
+            chat.lastMessage ?? 'ยังไม่มีข้อความ',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                chat.timeText,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              if (chat.unreadCount > 0) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E676),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    chat.unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -290,6 +384,7 @@ class ChatListItem {
   final String timeText;
   final bool isOnline;
   final String? avatarUrl;
+  final String type;
 
   ChatListItem({
     required this.id,
@@ -299,6 +394,7 @@ class ChatListItem {
     required this.timeText,
     required this.isOnline,
     required this.avatarUrl,
+    required this.type,
   });
 
   String get name => userName;
@@ -310,15 +406,16 @@ class ChatListItem {
       lastMessage: json['last_message']?.toString(),
       unreadCount: int.tryParse(json['unread_count'].toString()) ?? 0,
       timeText: json['time_text']?.toString() ?? '',
-      isOnline: json['is_online'] == true ||
-          json['is_online']?.toString() == '1',
+      isOnline:
+          json['is_online'] == true || json['is_online']?.toString() == '1',
       avatarUrl: json['avatar_url']?.toString(),
+      type: json['type']?.toString() ?? 'user_user',
     );
   }
 }
 
 class ChatApiService {
-  static const String baseUrl = 'http://localhost:3000/api/user-chat';
+  static const String baseUrl = 'http://localhost:3000/api/chat-v2';
 
   static Future<List<ChatListItem>> getConversations() async {
     final prefs = await SharedPreferences.getInstance();
@@ -333,7 +430,9 @@ class ChatApiService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('โหลดรายการแชตไม่สำเร็จ (${response.statusCode})');
+      throw Exception(
+        'โหลดรายการแชตไม่สำเร็จ (${response.statusCode}) ${response.body}',
+      );
     }
 
     final decoded = jsonDecode(response.body);
@@ -345,5 +444,69 @@ class ChatApiService {
     }
 
     throw Exception('รูปแบบข้อมูลรายการแชตไม่ถูกต้อง');
+  }
+
+  static Future<int> startAdminChat() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/conversations/start-admin-chat'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('เริ่มแชตกับแอดมินไม่สำเร็จ: ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return int.tryParse(decoded['conversation_id'].toString()) ?? 0;
+  }
+
+  static Future<int> startUserChat({
+    required int otherUserId,
+    String? title,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/conversations/start-user-chat'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'other_user_id': otherUserId,
+        'title': title,
+      }),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('เริ่มแชตกับผู้ใช้นี้ไม่สำเร็จ: ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return int.tryParse(decoded['conversation_id'].toString()) ?? 0;
+  }
+
+  static Future<void> deleteConversation(int conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/conversations/$conversationId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('ลบแชตไม่สำเร็จ: ${response.body}');
+    }
   }
 }

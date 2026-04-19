@@ -7,6 +7,8 @@ import 'pages/profile_page.dart';
 import 'chat_page.dart';
 import 'services/job_api_service.dart';
 import 'services/auth_service.dart';
+import 'chat_room_user_page.dart';
+import 'voice_call_page.dart';
 
 class JobProgressPage extends StatefulWidget {
   final int jobId;
@@ -29,6 +31,7 @@ class _JobProgressPageState extends State<JobProgressPage> {
   late Future<List<JobStatusUpdateItem>> _futureUpdates;
   int? _currentUserId;
   bool _isConfirming = false;
+  bool _isReporting = false;
 
   @override
   void initState() {
@@ -196,70 +199,108 @@ class _JobProgressPageState extends State<JobProgressPage> {
                       const SizedBox(height: 30),
                       _buildPriceSummary(priceText),
                       const SizedBox(height: 20),
+
                       if (isEmployer && job.status == 'waiting_review')
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton(
-                              onPressed: _isConfirming
-                                  ? null
-                                  : () async {
-                                      setState(() => _isConfirming = true);
-                                      try {
-                                        await JobApiService.confirmJobComplete(
-                                          job.id,
-                                        );
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: ElevatedButton(
+                                  onPressed: _isConfirming
+                                      ? null
+                                      : () async {
+                                          setState(() => _isConfirming = true);
+                                          try {
+                                            await JobApiService.confirmJobComplete(
+                                              job.id,
+                                            );
 
-                                        if (!mounted) return;
-                                        setState(() => _isConfirming = false);
+                                            if (!mounted) return;
+                                            setState(() => _isConfirming = false);
 
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                ReviewPage(job:jobMap ),
-                                          ),
-                                        );
-                                      } catch (e) {
-                                        if (!mounted) return;
-                                        setState(() => _isConfirming = false);
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('ยืนยันงานไม่สำเร็จ'),
-                                          ),
-                                        );
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00E676),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: _isConfirming
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text(
-                                      'ยืนยันงานและไปรีวิว',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ReviewPage(job: jobMap),
+                                              ),
+                                            );
+                                          } catch (e) {
+                                            if (!mounted) return;
+                                            setState(() => _isConfirming = false);
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('ยืนยันงานไม่สำเร็จ'),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF00E676),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
                                     ),
-                            ),
+                                    elevation: 0,
+                                  ),
+                                  child: _isConfirming
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'ยืนยันงานและไปรีวิว',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: OutlinedButton(
+                                  onPressed: _isReporting
+                                      ? null
+                                      : () => _showReportDialog(context),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Colors.red),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                  child: _isReporting
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.red,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'รายงานปัญหา',
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -295,63 +336,74 @@ class _JobProgressPageState extends State<JobProgressPage> {
   }
 
   Widget _buildWorkerHeader(PaymentWorkerInfo worker) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundImage: worker.img.isNotEmpty
-                ? NetworkImage(worker.img)
-                : null,
-            child: worker.img.isEmpty
-                ? Text(
-                    worker.name.isNotEmpty ? worker.name.characters.first : '?',
-                  )
-                : null,
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  worker.name.isNotEmpty ? worker.name : 'ผู้รับจ้าง',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 20),
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 15,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 25,
+          backgroundImage: worker.img.isNotEmpty
+              ? NetworkImage(worker.img)
+              : null,
+          child: worker.img.isEmpty
+              ? Text(worker.name.isNotEmpty
+                  ? worker.name.characters.first
+                  : '?')
+              : null,
+        ),
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                worker.name.isNotEmpty ? worker.name : 'ผู้รับจ้าง',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
-                Text(
-                  '${worker.jobTitle.isNotEmpty ? worker.jobTitle : 'ผู้รับจ้าง'} • ติดตามงาน',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                ),
-              ],
-            ),
+              ),
+              Text(
+                '${worker.jobTitle.isNotEmpty ? worker.jobTitle : 'ผู้รับจ้าง'} • ติดต่อ',
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+            ],
           ),
-          _circleIconButton(Icons.phone, Colors.green[50]!, Colors.green),
-          const SizedBox(width: 10),
-          _circleIconButton(
+        ),
+
+        /// 📞 ปุ่มโทร
+        GestureDetector(
+          onTap: () => _startCall(worker),
+          child: _circleIconButton(Icons.phone, Colors.green[50]!, Colors.green),
+        ),
+
+        const SizedBox(width: 10),
+
+        /// 💬 ปุ่มแชท
+        GestureDetector(
+          onTap: () => _startChat(worker),
+          child: _circleIconButton(
             Icons.chat_bubble_outline,
             Colors.green[50]!,
             Colors.green,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildTimelineStep({
     required String title,
@@ -486,6 +538,118 @@ class _JobProgressPageState extends State<JobProgressPage> {
       child: Icon(icon, color: iconColor, size: 20),
     );
   }
+
+  void _showReportDialog(BuildContext context) {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'รายงานปัญหา',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'กรอกรายละเอียดปัญหา',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ยกเลิก'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final message = controller.text.trim();
+              if (message.isEmpty) return;
+
+              Navigator.pop(context);
+              setState(() => _isReporting = true);
+
+              try {
+                await JobApiService.submitJobReport(
+                  jobId: widget.jobId,
+                  reporterUserId: _currentUserId ?? 0,
+                  reportedUserId: widget.workerUserId,
+                  message: message,
+                );
+
+                if (!mounted) return;
+                setState(() => _isReporting = false);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ส่งรายงานสำเร็จ')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                setState(() => _isReporting = false);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ส่งรายงานไม่สำเร็จ')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('ส่งรายงาน'),
+          ),
+        ],
+      ),
+    );
+  }
+  // ===================== 📞 CALL =====================
+void _startCall(PaymentWorkerInfo worker) {
+  final channelName = 'call_job_${widget.jobId}_${worker.id}';
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => VoiceCallPage(
+        contactName: worker.name,
+        avatarUrl: worker.img,
+        channelName: channelName,
+        localUid: _currentUserId ?? 0,
+      ),
+    ),
+  );
+}
+
+// ===================== 💬 CHAT =====================
+Future<void> _startChat(PaymentWorkerInfo worker) async {
+  try {
+    final conversationId = await ChatApiService.startUserChat(
+      otherUserId: worker.id,
+      title: 'แชทงาน ${widget.jobId}',
+    );
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatRoomUserPage(
+          contact: ChatListItem(
+            id: conversationId,
+            userName: worker.name,
+            lastMessage: '',
+            unreadCount: 0,
+            timeText: '',
+            isOnline: true,
+            avatarUrl: worker.img,
+            type: 'user_user',
+          ),
+        ),
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('เริ่มแชทไม่สำเร็จ: $e')),
+    );
+  }
+}
 
   Widget _buildBottomNav(BuildContext context) {
     return Container(

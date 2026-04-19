@@ -21,6 +21,8 @@ class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
 
   bool _isCompleting = false;
   bool _isUpdating = false;
+  bool _isReporting = false;
+  late bool _canReportAfterSubmit;
   Future<WorkerProfileResponse>? _futureEmployerProfile;
 
   @override
@@ -29,6 +31,12 @@ class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
     if (widget.job.userId != null) {
       _futureEmployerProfile = JobApiService.getWorkerProfile(widget.job.userId!);
     }
+
+    _canReportAfterSubmit = [
+      'waiting_review',
+      'completed',
+      'closed',
+    ].contains(widget.job.status);
   }
 
   @override
@@ -429,13 +437,17 @@ class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: _isCompleting ? null : () => _confirmComplete(context),
+            onTap: (_isCompleting || _canReportAfterSubmit)
+                ? null
+                : () => _confirmComplete(context),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: double.infinity,
               height: 52,
               decoration: BoxDecoration(
-                color: _isCompleting ? _green.withOpacity(0.7) : _green,
+                color: (_isCompleting || _canReportAfterSubmit)
+                    ? _green.withOpacity(0.7)
+                    : _green,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -457,16 +469,16 @@ class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
                       )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(
+                        children: [
+                          const Icon(
                             Icons.check_circle_outline_rounded,
                             color: Colors.white,
                             size: 22,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
-                            'งานเสร็จสิ้น',
-                            style: TextStyle(
+                            _canReportAfterSubmit ? 'ส่งงานแล้ว' : 'งานเสร็จสิ้น',
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -505,6 +517,51 @@ class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
               ),
             ),
           ),
+          if (_canReportAfterSubmit) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: _isReporting ? null : () => _showReportDialog(context),
+              child: Container(
+                width: double.infinity,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3F3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFFCDD2)),
+                ),
+                child: Center(
+                  child: _isReporting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.red,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.report_problem_outlined,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'รายงานปัญหา',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -557,9 +614,11 @@ class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
                       );
 
                       if (!mounted) return;
-                      setState(() => _isCompleting = false);
+                      setState(() {
+                        _isCompleting = false;
+                        _canReportAfterSubmit = true;
+                      });
                       _showSnack('งานเสร็จสิ้นแล้ว รอลูกค้ายืนยัน', _green);
-                      Navigator.pop(context, true);
                     } catch (e) {
                       if (!mounted) return;
                       setState(() => _isCompleting = false);
@@ -707,6 +766,84 @@ class _JobAcceptedDetailPageState extends State<JobAcceptedDetailPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showReportDialog(BuildContext context) {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'รายงานปัญหา',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        ),
+        content: TextField(
+          controller: controller,
+          maxLines: 5,
+          decoration: InputDecoration(
+            hintText: 'กรอกรายละเอียดปัญหาที่ต้องการรายงาน',
+            filled: true,
+            fillColor: const Color(0xFFF5F7FA),
+            contentPadding: const EdgeInsets.all(14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('ยกเลิก'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final message = controller.text.trim();
+                    if (message.isEmpty) return;
+
+                    Navigator.pop(context);
+                    setState(() => _isReporting = true);
+
+                    try {
+                      await JobApiService.submitJobReport(
+                        jobId: widget.job.id,
+                        reporterUserId: widget.job.assignedWorkerId ?? 0,
+                        reportedUserId: widget.job.userId ?? 0,
+                        message: message,
+                      );
+
+                      if (!mounted) return;
+                      setState(() => _isReporting = false);
+                      _showSnack('ส่งรายงานสำเร็จ', Colors.red);
+                    } catch (e) {
+                      if (!mounted) return;
+                      setState(() => _isReporting = false);
+                      _showSnack('ส่งรายงานไม่สำเร็จ', Colors.red);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
+                  child: const Text(
+                    'ส่งรายงาน',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

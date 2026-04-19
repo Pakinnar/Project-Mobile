@@ -6,9 +6,11 @@ import 'job_detail_page.dart';
 import 'job_status_page.dart';
 import 'category_page.dart';
 import 'chat_page.dart';
-import 'pages/profile_page.dart';
-import 'services/job_api_service.dart';
-import 'services/auth_service.dart';
+import '../pages/announcement_list_page.dart';
+import '../pages/profile_page.dart';
+import '../services/job_api_service.dart';
+import '../services/auth_service.dart';
+import '../services/announcement_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,12 +25,14 @@ class HomePageState extends State<HomePage> {
   static List<Map<String, String>> acceptedJobList = [];
 
   int? currentUserId;
+  int _announcementCount = 0;
 
   @override
   void initState() {
     super.initState();
     _futureJobs = JobApiService.getJobs();
     _loadCurrentUser();
+    _loadAnnouncementsCount();
   }
 
   Future<void> _loadCurrentUser() async {
@@ -41,10 +45,21 @@ class HomePageState extends State<HomePage> {
     } catch (_) {}
   }
 
+  Future<void> _loadAnnouncementsCount() async {
+    try {
+      final items = await AnnouncementService.getAnnouncements();
+      if (!mounted) return;
+      setState(() {
+        _announcementCount = items.length;
+      });
+    } catch (_) {}
+  }
+
   Future<void> _reloadJobs() async {
     setState(() {
       _futureJobs = JobApiService.getJobs();
     });
+    await _loadAnnouncementsCount();
   }
 
   bool _shouldShowOnHome(JobItem job) {
@@ -69,9 +84,49 @@ class HomePageState extends State<HomePage> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.black),
-            onPressed: () {},
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none, color: Colors.black),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AnnouncementListPage(),
+                    ),
+                  );
+                  await _loadAnnouncementsCount();
+                },
+              ),
+              if (_announcementCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    child: Text(
+                      _announcementCount > 99
+                          ? '99+'
+                          : _announcementCount.toString(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -253,20 +308,39 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildImageWidget(String? imgPath) {
-    if (imgPath == null || imgPath.isEmpty) {
-      return const Icon(Icons.image, color: Colors.grey, size: 30);
-    }
+  String? _normalizeImageUrl(String? imgPath) {
+  if (imgPath == null || imgPath.trim().isEmpty) return null;
 
-    if (imgPath.startsWith('http')) {
-      return Image.network(
-        imgPath,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            const Icon(Icons.image, color: Colors.grey),
-      );
-    }
+  final raw = imgPath.trim();
 
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw;
+  }
+
+  if (raw.startsWith('/uploads/')) {
+    return 'http://localhost:3000$raw';
+  }
+
+  if (raw.startsWith('uploads/')) {
+    return 'http://localhost:3000/$raw';
+  }
+
+  return null;
+}
+
+Widget _buildImageWidget(String? imgPath) {
+  final normalizedUrl = _normalizeImageUrl(imgPath);
+
+  if (normalizedUrl != null) {
+    return Image.network(
+      normalizedUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) =>
+          const Icon(Icons.image, color: Colors.grey, size: 30),
+    );
+  }
+
+  if (imgPath != null && imgPath.isNotEmpty) {
     final file = File(imgPath);
     if (file.existsSync()) {
       return Image.file(
@@ -276,9 +350,10 @@ class HomePageState extends State<HomePage> {
             const Icon(Icons.image, color: Colors.grey),
       );
     }
-
-    return const Icon(Icons.image, color: Colors.grey);
   }
+
+  return const Icon(Icons.image, color: Colors.grey, size: 30);
+}
 
   Widget _buildBottomNav(BuildContext context) {
     return Container(
